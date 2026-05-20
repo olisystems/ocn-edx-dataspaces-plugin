@@ -1,0 +1,877 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EDX CDR Forwarder - OCN Node Plugin</title>
+  <meta name="description" content="A quick executive handoff explaining how the EDX connector turns charging records from the OCN Node into business-ready data.">
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Fragment+Mono:ital@0;1&family=Onest:wght@400;500;600;700&display=swap");
+
+    :root {
+      --ink: #0e0e0e;
+      --ink-soft: #1e1e1e;
+      --paper: #fbfbfb;
+      --paper-warm: #f3f0ea;
+      --line: #d1d1d1;
+      --muted: #696969;
+      --oli-green: #7fb900;
+      --oli-red: #c63a18;
+      --oli-cyan: #0082a8;
+      --radius: 20px;
+      --motion: cubic-bezier(0.32, 0.72, 0, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "Onest", system-ui, sans-serif;
+      letter-spacing: 0;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+      opacity: 0.045;
+      background-image:
+        repeating-radial-gradient(circle at 20% 30%, rgba(14, 14, 14, 0.9) 0 1px, transparent 1px 4px),
+        repeating-linear-gradient(90deg, rgba(14, 14, 14, 0.14) 0 1px, transparent 1px 9px);
+      mix-blend-mode: multiply;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .deck {
+      position: relative;
+      min-height: 100dvh;
+      overflow: hidden;
+      background:
+        linear-gradient(90deg, rgba(14, 14, 14, 0.045) 1px, transparent 1px) 0 0 / 64px 64px,
+        linear-gradient(0deg, rgba(14, 14, 14, 0.04) 1px, transparent 1px) 0 0 / 64px 64px,
+        var(--paper);
+    }
+
+    .controls {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      z-index: 4;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      border-radius: 999px;
+      background: rgba(251, 251, 251, 0.88);
+      border: 1px solid rgba(14, 14, 14, 0.1);
+      box-shadow: 0 24px 70px rgba(14, 14, 14, 0.1);
+      backdrop-filter: blur(18px);
+    }
+
+    .nav-button {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      border: 0;
+      border-radius: 50%;
+      color: var(--paper);
+      background: var(--ink);
+      cursor: pointer;
+      transition: transform 520ms var(--motion), background 520ms var(--motion);
+    }
+
+    .nav-button:hover {
+      background: var(--oli-red);
+      transform: translateY(-2px);
+    }
+
+    .progress {
+      position: fixed;
+      left: 24px;
+      bottom: 24px;
+      z-index: 4;
+      width: min(520px, calc(100vw - 228px));
+      height: 7px;
+      padding: 1px;
+      border-radius: 999px;
+      background: rgba(14, 14, 14, 0.09);
+    }
+
+    .progress span {
+      display: block;
+      width: var(--progress);
+      height: 100%;
+      border-radius: inherit;
+      background: var(--oli-green);
+      transition: width 700ms var(--motion);
+    }
+
+    .slides {
+      position: relative;
+      min-height: 100dvh;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      align-items: center;
+      width: 100%;
+      min-height: 100dvh;
+      padding: 56px clamp(28px, 5vw, 72px) 82px;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(7%) scale(0.985);
+      transition: opacity 700ms var(--motion), transform 900ms var(--motion);
+    }
+
+    .slide.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(0) scale(1);
+    }
+
+    .slide-inner {
+      width: min(1180px, 100%);
+      margin: 0 auto;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+      padding: 0 0 10px;
+      color: var(--muted);
+      border-bottom: 1px solid rgba(14, 14, 14, 0.22);
+      background: transparent;
+      font-family: "Onest", system-ui, sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 1px;
+      background: var(--oli-red);
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h1,
+    h2 {
+      max-width: 1040px;
+      margin-top: 22px;
+      font-family: "Onest", system-ui, sans-serif;
+      font-weight: 600;
+      line-height: 1.04;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 850px;
+      font-size: clamp(34px, 4.2vw, 52px);
+    }
+
+    h2 {
+      max-width: 860px;
+      font-size: clamp(32px, 3.8vw, 48px);
+    }
+
+    .serif {
+      font-family: inherit;
+      font-style: normal;
+      font-weight: 600;
+    }
+
+    .lead {
+      max-width: 720px;
+      margin-top: 28px;
+      color: var(--ink-soft);
+      font-family: "Onest", system-ui, sans-serif;
+      font-size: clamp(16px, 1.35vw, 19px);
+      line-height: 1.5;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: clamp(28px, 5vw, 70px);
+      align-items: stretch;
+    }
+
+    .hero-panel {
+      position: relative;
+      min-height: 540px;
+      border-radius: 28px;
+      padding: 8px;
+      background: rgba(14, 14, 14, 0.07);
+      border: 1px solid rgba(14, 14, 14, 0.08);
+    }
+
+    .hero-photo {
+      position: relative;
+      height: 100%;
+      min-height: 520px;
+      overflow: hidden;
+      border-radius: 21px;
+      background:
+        linear-gradient(180deg, rgba(14, 14, 14, 0.06), rgba(14, 14, 14, 0.62)),
+        url("https://framerusercontent.com/images/LgKmGjblYvWyNa31VCniVwya5gY.jpg?scale-down-to=2048&width=4096&height=2731") center / cover;
+    }
+
+    .hero-photo::after {
+      content: "";
+      position: absolute;
+      inset: auto 26px 26px 26px;
+      height: 92px;
+      border-radius: 24px;
+      background: rgba(251, 251, 251, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.25);
+    }
+
+    .hero-metric {
+      position: absolute;
+      right: 44px;
+      bottom: 49px;
+      z-index: 1;
+      color: var(--ink);
+      font-family: "Fragment Mono", monospace;
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .hero-metric strong {
+      display: block;
+      margin-top: 7px;
+      color: var(--oli-red);
+      font-family: "Onest", system-ui, sans-serif;
+      font-size: 26px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0;
+      margin-top: 38px;
+      border-top: 1px solid rgba(14, 14, 14, 0.16);
+      border-bottom: 1px solid rgba(14, 14, 14, 0.16);
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 48px;
+      padding: 0 24px;
+      color: var(--ink-soft);
+      border-right: 1px solid rgba(14, 14, 14, 0.14);
+      background: transparent;
+      font-family: "Onest", system-ui, sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .pill:first-child {
+      padding-left: 0;
+    }
+
+    .pill:last-child {
+      border-right: 0;
+    }
+
+    .pill.green,
+    .pill.light {
+      background: transparent;
+      color: var(--ink-soft);
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 0.85fr) minmax(360px, 1.15fr);
+      gap: clamp(28px, 5vw, 72px);
+      align-items: center;
+    }
+
+    .stage {
+      border-radius: 26px;
+      padding: 8px;
+      background: rgba(14, 14, 14, 0.06);
+      border: 1px solid rgba(14, 14, 14, 0.08);
+    }
+
+    .stage-core {
+      min-height: 520px;
+      border-radius: 20px;
+      padding: clamp(22px, 3vw, 42px);
+      background: var(--ink);
+      color: var(--paper);
+      overflow: hidden;
+    }
+
+    .flow {
+      display: grid;
+      gap: 14px;
+    }
+
+    .flow-node {
+      display: grid;
+      grid-template-columns: 58px minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: center;
+      padding: 18px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: transform 700ms var(--motion), background 700ms var(--motion);
+    }
+
+    .flow-node:hover {
+      background: rgba(255, 255, 255, 0.12);
+      transform: translateX(8px);
+    }
+
+    .badge {
+      display: grid;
+      place-items: center;
+      width: 58px;
+      height: 58px;
+      border-radius: 0;
+      color: #d1d1d1;
+      background: transparent;
+      border-top: 1px solid rgba(209, 209, 209, 0.55);
+      border-bottom: 1px solid rgba(209, 209, 209, 0.55);
+      font-family: "Onest", system-ui, sans-serif;
+      font-size: 22px;
+      font-weight: 400;
+    }
+
+    .flow-node h3 {
+      font-size: clamp(20px, 1.8vw, 24px);
+      font-weight: 600;
+    }
+
+    .flow-node p {
+      margin-top: 4px;
+      color: #d1d1d1;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .architecture-diagram {
+      display: block;
+      width: 100%;
+      height: auto;
+      min-height: 510px;
+    }
+
+    .diagram-box {
+      fill: rgba(255, 255, 255, 0.08);
+      stroke: rgba(255, 255, 255, 0.18);
+      stroke-width: 1.5;
+    }
+
+    .diagram-box.subtle {
+      fill: rgba(255, 255, 255, 0.045);
+    }
+
+    .diagram-box.node {
+      fill: rgba(255, 255, 255, 0.14);
+      stroke: rgba(255, 255, 255, 0.28);
+    }
+
+    .diagram-box.connector {
+      fill: rgba(198, 58, 24, 0.13);
+      stroke: rgba(198, 58, 24, 0.42);
+    }
+
+    .diagram-box.service {
+      fill: rgba(127, 185, 0, 0.13);
+      stroke: rgba(127, 185, 0, 0.38);
+    }
+
+    .diagram-title {
+      fill: #fbfbfb;
+      font-family: "Onest", system-ui, sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .diagram-label {
+      fill: #d1d1d1;
+      font-family: "Onest", system-ui, sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    .diagram-copy {
+      fill: #d1d1d1;
+      font-family: "Onest", system-ui, sans-serif;
+      font-size: 13px;
+      font-weight: 400;
+    }
+
+    .diagram-route {
+      fill: none;
+      stroke: rgba(209, 209, 209, 0.76);
+      stroke-width: 2;
+      marker-end: url(#arrow-neutral);
+    }
+
+    .diagram-copy-route {
+      fill: none;
+      stroke: rgba(198, 58, 24, 0.88);
+      stroke-width: 2.5;
+      marker-end: url(#arrow-red);
+    }
+
+    .diagram-note {
+      fill: #bdbdbd;
+      font-family: "Onest", system-ui, sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .arrow {
+      color: var(--oli-red);
+      font-size: 23px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 48px;
+    }
+
+    .card-shell {
+      border-radius: 30px;
+      padding: 7px;
+      background: rgba(14, 14, 14, 0.06);
+      border: 1px solid rgba(14, 14, 14, 0.08);
+    }
+
+    .card {
+      min-height: 235px;
+      border-radius: 23px;
+      padding: 24px;
+      background: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.7);
+    }
+
+    .card .num {
+      color: var(--muted);
+      font-family: "Onest", system-ui, sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .card h3 {
+      margin-top: 22px;
+      font-size: 26px;
+      font-weight: 600;
+      line-height: 1.05;
+    }
+
+    .card p {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.45;
+    }
+
+    .feature-band {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 44px;
+    }
+
+    .feature {
+      min-height: 196px;
+      border-radius: 20px;
+      padding: 28px;
+      background: #fff;
+      color: var(--ink);
+      border: 1px solid rgba(14, 14, 14, 0.1);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .feature.green {
+      background: #f6f8f1;
+      color: var(--ink);
+      border-color: rgba(127, 185, 0, 0.24);
+    }
+
+    .feature.red {
+      background: #fbf1ed;
+      color: var(--ink);
+      border-color: rgba(198, 58, 24, 0.22);
+    }
+
+    .feature h3 {
+      max-width: 380px;
+      font-size: clamp(22px, 2.2vw, 30px);
+      font-weight: 600;
+      line-height: 1.12;
+    }
+
+    .feature p {
+      max-width: 480px;
+      margin-top: 18px;
+      font-size: 16px;
+      line-height: 1.48;
+      opacity: 0.78;
+    }
+
+    .code-panel {
+      border-radius: 22px;
+      padding: 8px;
+      background: rgba(14, 14, 14, 0.06);
+      border: 1px solid rgba(14, 14, 14, 0.08);
+    }
+
+    pre {
+      min-height: 440px;
+      margin: 0;
+      overflow: auto;
+      border-radius: 16px;
+      padding: 30px;
+      background: #101010;
+      color: #f0f0f0;
+      font-family: "Fragment Mono", monospace;
+      font-size: clamp(13px, 1.35vw, 16px);
+      line-height: 1.78;
+      white-space: pre-wrap;
+    }
+
+    .accent {
+      color: var(--oli-green);
+    }
+
+    .accent-red {
+      color: var(--oli-red);
+    }
+
+    .timeline {
+      display: grid;
+      gap: 16px;
+      margin-top: 38px;
+    }
+
+    .timeline-item {
+      display: grid;
+      grid-template-columns: 108px 1fr;
+      gap: 20px;
+      align-items: start;
+      padding: 21px 0;
+      border-top: 1px solid rgba(14, 14, 14, 0.16);
+    }
+
+    .timeline-item:last-child {
+      border-bottom: 1px solid rgba(14, 14, 14, 0.16);
+    }
+
+    .time {
+      color: var(--oli-red);
+      font-family: "Fragment Mono", monospace;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    .timeline-item h3 {
+      font-size: clamp(21px, 2vw, 27px);
+      font-weight: 600;
+    }
+
+    .timeline-item p {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.45;
+    }
+
+    .quote {
+      max-width: 880px;
+      font-family: "Onest", system-ui, sans-serif;
+      font-size: clamp(38px, 5vw, 64px);
+      font-style: normal;
+      font-weight: 600;
+      line-height: 1.05;
+    }
+
+    .source {
+      margin-top: 38px;
+      color: rgba(105, 105, 105, 0.74);
+      font-family: "Onest", system-ui, sans-serif;
+      font-size: 12px;
+      line-height: 1.6;
+      text-transform: none;
+    }
+
+    .source a {
+      color: rgba(14, 14, 14, 0.76);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(198, 58, 24, 0.32);
+    }
+
+    .counter {
+      min-width: 74px;
+      color: var(--muted);
+      font-family: "Fragment Mono", monospace;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .controls {
+        right: 12px;
+        bottom: 12px;
+      }
+
+      .slide {
+        position: relative;
+        display: none;
+        padding: 48px 18px 84px;
+      }
+
+      .slide.active {
+        display: grid;
+      }
+
+      .hero-grid,
+      .split,
+      .feature-band {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-panel {
+        min-height: 340px;
+        transform: none;
+      }
+
+      .hero-photo {
+        min-height: 330px;
+      }
+
+      .cards {
+        grid-template-columns: 1fr;
+      }
+
+      .stage-core {
+        min-height: unset;
+      }
+
+      .architecture-diagram {
+        min-height: 360px;
+      }
+
+      .flow-node {
+        grid-template-columns: 48px minmax(0, 1fr);
+      }
+
+      .flow-node .arrow {
+        display: none;
+      }
+
+      .badge {
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+      }
+
+      .timeline-item {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+
+      pre {
+        min-height: unset;
+      }
+
+      .counter {
+        display: none;
+      }
+
+      .progress {
+        left: 12px;
+        bottom: 28px;
+        width: calc(100vw - 140px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="deck" aria-live="polite">
+    <div class="controls">
+      <button class="nav-button" type="button" data-prev aria-label="Previous slide">‹</button>
+      <div class="counter"><span data-current>01</span> / <span data-total>07</span></div>
+      <button class="nav-button" type="button" data-next aria-label="Next slide">›</button>
+    </div>
+
+    <div class="slides">
+      <section class="slide active">
+        <div class="slide-inner">
+          <h1>Normal routing continues while CDRs are copied for ingest.</h1>
+          <p class="lead">The diagram shows the OCN Node routing charging records between parties, while the EDX Connector sends a controlled copy to the CDR Ingest Service.</p>
+          <div class="stage" style="margin-top: 34px;">
+            <div class="stage-core">
+              <svg class="architecture-diagram" viewBox="0 0 1120 560" role="img" aria-labelledby="diagramTitle diagramDesc">
+                <title id="diagramTitle">OCN Node, EDX Connector and CDR Ingest Service diagram</title>
+                <desc id="diagramDesc">Normal routing flows from the sending roaming party to the OCN Node and then to the receiving roaming party. The EDX Connector listens inside the OCN Node and forwards a copied CDR to the CDR Ingest Service.</desc>
+                <defs>
+                  <marker id="arrow-neutral" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+                    <path d="M2 2 L10 6 L2 10" fill="none" stroke="rgba(209, 209, 209, 0.76)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+                  </marker>
+                  <marker id="arrow-red" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+                    <path d="M2 2 L10 6 L2 10" fill="none" stroke="rgba(198, 58, 24, 0.88)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                  </marker>
+                </defs>
+
+                <rect class="diagram-box subtle" x="54" y="118" width="205" height="132" rx="18"></rect>
+                <text class="diagram-label" x="82" y="154">Roaming party</text>
+                <text class="diagram-title" x="82" y="190">CPO / EMSP</text>
+                <text class="diagram-copy" x="82" y="220">Sends the charging record.</text>
+
+                <rect class="diagram-box node" x="418" y="88" width="284" height="178" rx="20"></rect>
+                <text class="diagram-label" x="454" y="130">Network exchange</text>
+                <text class="diagram-title" x="454" y="170">OCN Node</text>
+                <text class="diagram-copy" x="454" y="204">Routes the CDR through</text>
+                <text class="diagram-copy" x="454" y="224">the standard roaming flow.</text>
+
+                <rect class="diagram-box subtle" x="870" y="118" width="205" height="132" rx="18"></rect>
+                <text class="diagram-label" x="898" y="154">Roaming party</text>
+                <text class="diagram-title" x="898" y="190">Receiving party</text>
+                <text class="diagram-copy" x="898" y="220">Receives the routed CDR.</text>
+
+                <rect class="diagram-box connector" x="428" y="368" width="264" height="146" rx="18"></rect>
+                <text class="diagram-label" x="462" y="414">Plugin layer</text>
+                <text class="diagram-title" x="462" y="454">EDX Connector</text>
+                <text class="diagram-copy" x="462" y="480">Copies CDRs in the background.</text>
+
+                <rect class="diagram-box service" x="816" y="368" width="250" height="146" rx="18"></rect>
+                <text class="diagram-label" x="850" y="414">Business data</text>
+                <text class="diagram-title" x="850" y="454">CDR Ingest Service</text>
+                <text class="diagram-copy" x="850" y="480">Stores records downstream.</text>
+
+                <path class="diagram-route" d="M259 184 H388"></path>
+                <path class="diagram-route" d="M702 184 H840"></path>
+                <text class="diagram-note" x="281" y="158">Normal routing</text>
+                <text class="diagram-note" x="720" y="140">Normal routing</text>
+                <text class="diagram-note" x="720" y="156">continues</text>
+
+                <path class="diagram-copy-route" d="M560 266 V340"></path>
+                <path class="diagram-copy-route" d="M692 441 H786"></path>
+                <text class="diagram-note" x="588" y="314">CDR observed</text>
+                <text class="diagram-note" x="710" y="417">Copied CDR</text>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="slide-inner">
+          <h2>What the plugin does</h2>
+          <div class="feature-band">
+            <div class="feature green">
+              <h3>Listens for CDRs</h3>
+              <p>The plugin runs inside the OCN Node and watches for charging records that pass through the normal CDR endpoints.</p>
+            </div>
+            <div class="feature">
+              <h3>Sends a copy</h3>
+              <p>When a CDR is found, the plugin sends a copy to the CDR Ingest Service. The original routing continues normally.</p>
+            </div>
+            <div class="feature">
+              <h3>Uses configured settings</h3>
+              <p>The service URL, API key, enabled state and timeout are set during deployment. The API key is not printed in full.</p>
+            </div>
+            <div class="feature red">
+              <h3>Logs failures</h3>
+              <p>If the ingest service is unavailable or rejects a CDR, the node logs the error and keeps running.</p>
+            </div>
+          </div>
+          <p class="source">Visual style references <a href="https://www.my-oli.com/" target="_blank" rel="noopener">my-oli.com</a>. Content reflects the EDX CDR Forwarder plugin.</p>
+        </div>
+      </section>
+    </div>
+
+    <div class="progress" aria-hidden="true"><span></span></div>
+  </main>
+
+  <script>
+    const slides = Array.from(document.querySelectorAll(".slide"));
+    const prev = document.querySelector("[data-prev]");
+    const next = document.querySelector("[data-next]");
+    const current = document.querySelector("[data-current]");
+    const total = document.querySelector("[data-total]");
+    const progress = document.querySelector(".progress span");
+    let index = 0;
+
+    total.textContent = String(slides.length).padStart(2, "0");
+
+    function show(nextIndex) {
+      index = (nextIndex + slides.length) % slides.length;
+      slides.forEach((slide, position) => {
+        slide.classList.toggle("active", position === index);
+      });
+      current.textContent = String(index + 1).padStart(2, "0");
+      progress.style.setProperty("--progress", `${((index + 1) / slides.length) * 100}%`);
+    }
+
+    prev.addEventListener("click", () => show(index - 1));
+    next.addEventListener("click", () => show(index + 1));
+
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowRight" || event.key === " " || event.key === "PageDown") {
+        event.preventDefault();
+        show(index + 1);
+      }
+      if (event.key === "ArrowLeft" || event.key === "PageUp") {
+        event.preventDefault();
+        show(index - 1);
+      }
+      if (event.key === "Home") {
+        event.preventDefault();
+        show(0);
+      }
+      if (event.key === "End") {
+        event.preventDefault();
+        show(slides.length - 1);
+      }
+    });
+
+    show(0);
+  </script>
+</body>
+</html>
