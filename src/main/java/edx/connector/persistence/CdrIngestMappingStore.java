@@ -12,18 +12,17 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
-*/
+ */
 
-package edx.connector.cdrservice;
+package edx.connector.persistence;
 
-import java.util.Map;
+import java.util.Optional;
 
-public record Co2RelevantCdrDto(
-    String rawRecordId,
-    PeriodDto period,
-    LocationDto location,
-    EnergyDto energy,
-    ExtractionDto extraction,
-    Map<String, Object> attributes
-) {
+public interface CdrIngestMappingStore {
+
+    void recordSuccessfulIngest(String countryCode, String partyId, String cdrId, String serviceId);
+
+    Optional<EdxCdrIngestMapping> find(String countryCode, String partyId, String cdrId);
+
+    Optional<EdxCdrIngestMapping> findByServiceId(String serviceId);
 }

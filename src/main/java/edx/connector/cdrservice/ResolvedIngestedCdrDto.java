@@ -16,9 +16,14 @@
 
 package edx.connector.cdrservice;
 
-public record Co2RelevantCdrResponseDto(
-    String id,
-    String createdAt,
-    Co2RelevantCdrDto co2RelevantCdr
+import java.util.Map;
+
+public record ResolvedIngestedCdrDto(
+    String countryCode,
+    String partyId,
+    String cdrId,
+    String serviceId,
+    String receivedAt,
+    Map<String, Object> cdr
 ) {
 }

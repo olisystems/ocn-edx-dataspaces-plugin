@@ -72,26 +72,6 @@ public final class CdrServiceClient {
         return send(request, RawCdrDto.class);
     }
 
-    public void deleteRawCdrById(String id) {
-        HttpRequest request = requestBuilder("/api/raw-cdr/" + pathSegment(id)).DELETE().build();
-        send(request);
-    }
-
-    public List<Co2RelevantCdrResponseDto> getAllCo2RelevantCdrs() {
-        HttpRequest request = requestBuilder("/api/co2-relevant-cdr").GET().build();
-        return send(request, new TypeReference<>() {});
-    }
-
-    public Co2RelevantCdrResponseDto getCo2RelevantCdrById(String id) {
-        HttpRequest request = requestBuilder("/api/co2-relevant-cdr/" + pathSegment(id)).GET().build();
-        return send(request, Co2RelevantCdrResponseDto.class);
-    }
-
-    public Co2RelevantCdrResponseDto getCo2RelevantCdrByRawRecordId(String rawRecordId) {
-        HttpRequest request = requestBuilder("/api/co2-relevant-cdr/raw/" + pathSegment(rawRecordId)).GET().build();
-        return send(request, Co2RelevantCdrResponseDto.class);
-    }
-
     private HttpRequest.Builder requestBuilder(String apiPath) {
         HttpRequest.Builder builder = HttpRequest.newBuilder(endpoint(apiPath))
             .timeout(timeout)

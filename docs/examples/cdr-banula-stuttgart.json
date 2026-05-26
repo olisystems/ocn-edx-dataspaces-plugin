@@ -1,0 +1,82 @@
+{
+  "country_code": "DE",
+  "party_id": "FHG",
+  "id": "94864128-50eb-46c6-bd9f-f4323cd4c057",
+  "start_date_time": "2025-05-21T11:33:27.538Z",
+  "end_date_time": "2025-05-21T13:03:27.538Z",
+  "session_id": "OLI_OCPI_HUB_1_OCPPJ16_7500",
+  "cdr_token": {
+    "uid": "MOCK12345",
+    "type": "RFID",
+    "contract_id": "DE-OLI-C1234567",
+    "country_code": "DE",
+    "party_id": "OLI"
+  },
+  "auth_method": "AUTH_REQUEST",
+  "cdr_location": {
+    "id": "eb0014c0-34fc-49cc-a338-5fac07724f5f",
+    "name": "BANULA Stuttgart",
+    "address": "Nobelstrasse 12",
+    "city": "Stuttgart",
+    "postal_code": "70569",
+    "country": "DEU",
+    "coordinates": {
+      "latitude": "48.7409780",
+      "longitude": "9.0994018"
+    },
+    "evse_uid": "620",
+    "evse_id": "DE*FHG*EOLI*OCPI*HUB1*1",
+    "connector_id": "0",
+    "connector_standard": "IEC_62196_T2",
+    "connector_format": "SOCKET",
+    "connector_power_type": "AC_3_PHASE"
+  },
+  "currency": "EUR",
+  "charging_periods": [
+    {
+      "start_date_time": "2025-05-21T11:33:27.538Z",
+      "dimensions": [{ "type": "ENERGY", "volume": "0.506" }]
+    },
+    {
+      "start_date_time": "2025-05-21T11:48:27.538Z",
+      "dimensions": [{ "type": "ENERGY", "volume": "0.507" }]
+    },
+    {
+      "start_date_time": "2025-05-21T12:03:27.538Z",
+      "dimensions": [{ "type": "ENERGY", "volume": "0.505" }]
+    },
+    {
+      "start_date_time": "2025-05-21T12:18:27.538Z",
+      "dimensions": [{ "type": "ENERGY", "volume": "0.504" }]
+    },
+    {
+      "start_date_time": "2025-05-21T12:33:27.538Z",
+      "dimensions": [{ "type": "ENERGY", "volume": "0.506" }]
+    },
+    {
+      "start_date_time": "2025-05-21T12:48:27.538Z",
+      "dimensions": [{ "type": "ENERGY", "volume": "0.507" }]
+    }
+  ],
+  "signed_data": {
+    "encoding_method": "OCMF",
+    "signed_values": [
+      {
+        "nature": "End",
+        "plain_data": "3035",
+        "signed_data": "OCMF|{\"FV\" : \"1.0\",...}|{\"SA\" : \"ECDSA-secp256k1-SHA256\",\"SD\" : \"304502210088EDC91E557F91FF05464009BB50604A27068B17B381BD6BEA9C7E50009CC9360220316E5947A9D8DFCFF4E580BBB94FAF104E8A6C3C059F4E237FC43C34DF08A353\"}"
+      }
+    ],
+    "url": "https://ubstack.iao.fraunhofer.de"
+  },
+  "total_cost": {
+    "excl_vat": 0.0,
+    "incl_vat": 0.0
+  },
+  "total_energy": "3.035",
+  "total_time": 1.5,
+  "total_parking_time": 0.0,
+  "credit": false,
+  "home_charing_compensation": false,
+  "last_updated": "2025-05-21T11:37:45.271Z"
+}

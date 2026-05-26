@@ -12,6 +12,10 @@ java {
     }
 }
 
+tasks.withType<JavaCompile> {
+    options.compilerArgs.add("-parameters")
+}
+
 repositories {
     mavenLocal()
     mavenCentral()
@@ -23,8 +27,12 @@ dependencies {
     }
     compileOnly("org.jetbrains.kotlin:kotlin-stdlib:2.1.20")
     compileOnly("com.fasterxml.jackson.core:jackson-databind:2.18.3")
+    compileOnly("org.springframework.boot:spring-boot-autoconfigure:3.4.5")
     compileOnly("org.springframework:spring-context:6.2.6")
     compileOnly("org.springframework:spring-web:6.2.6")
+    compileOnly("org.springframework.boot:spring-boot-starter-data-jpa:3.4.5")
+    compileOnly("jakarta.persistence:jakarta.persistence-api:3.1.0")
+    compileOnly("org.springframework.data:spring-data-jpa:3.4.5")
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
     testImplementation("snc.openchargingnetwork:node:ocn-v2") {
@@ -41,10 +49,10 @@ tasks.withType<Test> {
 }
 
 tasks.withType<Jar> {
-    archiveBaseName.set("ocn-node-official-plugin")
+    archiveBaseName.set("ocn-node-edx-plugin")
     manifest {
         attributes(
-            "Implementation-Title" to "OCN Node Official Plugin",
+            "Implementation-Title" to "OCN Node EDX Plugin",
             "Implementation-Version" to project.version
         )
     }

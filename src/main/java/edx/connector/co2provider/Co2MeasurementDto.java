@@ -12,14 +12,18 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
-*/
+ */
 
-package edx.connector.cdrservice;
+package edx.connector.co2provider;
 
 import java.util.List;
 
-public record ExtractionDto(
-    ExtractionStatus status,
-    List<String> warnings
+public record Co2MeasurementDto(
+    String unit,
+    String zone,
+    String timeResolution,
+    String calculationType,
+    String emissionType,
+    List<Co2MeasurementValueDto> measurementValues
 ) {
 }

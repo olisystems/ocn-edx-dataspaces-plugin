@@ -12,12 +12,15 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
-*/
+ */
 
-package edx.connector.cdrservice;
+package edx.connector.co2provider;
 
-public enum ExtractionStatus {
-    SUCCESS,
-    PARTIAL,
-    FAILED
+import java.util.List;
+
+public record Co2EmissionDataResponseDto(
+    String startUtc,
+    String stopUtc,
+    List<Co2MeasurementDto> measurements
+) {
 }

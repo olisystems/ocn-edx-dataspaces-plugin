@@ -1,0 +1,1072 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EDX CDR + CO₂ lab · OLI Systems</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Fragment+Mono:ital@0;1&family=Onest:wght@400;500;600;700&display=swap");
+
+    :root {
+      --ink: #0e0e0e;
+      --ink-soft: #1e1e1e;
+      --paper: #ffffff;
+      --card: #ebebeb;
+      --line: #d1d1d1;
+      --muted: #696969;
+      --oli-green: #7fb900;
+      --oli-green-dark: #5a8200;
+      --mono: "Fragment Mono", ui-monospace, monospace;
+      --sans: "Onest", system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      color: var(--ink);
+      background: #ffffff;
+      line-height: 1.45;
+    }
+
+    a { color: var(--oli-green-dark); }
+
+    a:hover { color: var(--oli-green); }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 24px 0;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      text-decoration: none;
+      color: var(--ink);
+    }
+
+    .brand-logo {
+      display: block;
+      height: 28px;
+      width: auto;
+    }
+
+    .hero {
+      padding: 40px 24px 0;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .hero h1 {
+      margin: 0 0 12px;
+      font-size: clamp(1.75rem, 4vw, 2.75rem);
+      font-weight: 600;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      max-width: none;
+    }
+
+    .hero .lead {
+      display: none;
+    }
+
+    .hero code,
+    .hint code {
+      font-family: var(--mono);
+      font-size: 0.85em;
+      background: none;
+      padding: 0;
+      color: var(--oli-green-dark);
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 8px 24px 80px;
+    }
+
+    .sections {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      margin-top: 32px;
+    }
+
+    .oli-card {
+      background: var(--card);
+      border-radius: 28px;
+      padding: clamp(28px, 4vw, 40px);
+    }
+
+    .oli-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .oli-card-title-wrap {
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .oli-card-step {
+      font-size: clamp(1.5rem, 3.2vw, 2rem);
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      color: var(--oli-green);
+      flex-shrink: 0;
+    }
+
+    .oli-card-title {
+      margin: 0;
+      font-size: clamp(1.5rem, 3.2vw, 2rem);
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+    }
+
+    .oli-card-action {
+      flex-shrink: 0;
+      width: 44px;
+      height: 44px;
+      border: none;
+      border-radius: 50%;
+      padding: 0;
+      cursor: pointer;
+      background: var(--oli-green);
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    .oli-card-action:hover:not(:disabled) {
+      background: var(--oli-green-dark);
+      transform: translateX(2px);
+    }
+
+    .oli-card-action svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .oli-card-lead {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+      line-height: 1.45;
+      color: var(--ink);
+    }
+
+    .oli-card-desc {
+      margin: 6px 0 0;
+      font-size: 0.95rem;
+      font-weight: 400;
+      line-height: 1.5;
+      color: var(--ink-soft);
+      max-width: 36em;
+    }
+
+    .oli-card-desc + .oli-card-body,
+    .oli-card-lead + .oli-card-body {
+      margin-top: 28px;
+    }
+
+    .oli-card-body .hint {
+      margin-top: 16px;
+    }
+
+    .fields-loose {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 28px 40px;
+      align-items: flex-end;
+    }
+
+    .field {
+      flex: 1 1 220px;
+      min-width: 180px;
+      max-width: 420px;
+    }
+
+    .field-wide {
+      flex: 1 1 100%;
+      max-width: none;
+    }
+
+    label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--muted);
+      margin: 10px 0 4px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      font: 500 0.9rem/1.4 var(--mono);
+      border: none;
+      border-bottom: 1px solid rgba(14, 14, 14, 0.22);
+      border-radius: 0;
+      padding: 10px 0;
+      background: transparent;
+      color: var(--ink);
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-bottom-color: var(--oli-green);
+    }
+
+    textarea {
+      min-height: 240px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    .inline-pair {
+      display: flex;
+      gap: 16px;
+    }
+
+    .inline-pair input {
+      flex: 1;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    button {
+      font: 600 0.85rem var(--sans);
+      border: none;
+      border-radius: 0;
+      padding: 8px 0;
+      cursor: pointer;
+      background: transparent;
+      color: var(--oli-green-dark);
+      transition: color 0.2s ease;
+    }
+
+    button:hover:not(:disabled) {
+      color: var(--oli-green);
+    }
+
+    button.secondary {
+      color: var(--ink);
+    }
+
+    button.secondary:hover:not(:disabled) {
+      color: var(--oli-green);
+    }
+
+    button.ghost {
+      color: var(--muted);
+    }
+
+    button.ghost:hover:not(:disabled) {
+      color: var(--oli-green-dark);
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .steps {
+      display: none;
+    }
+
+    #log {
+      font: 400 0.8rem/1.55 var(--mono);
+      background: transparent;
+      color: var(--ink-soft);
+      border: none;
+      padding: 0;
+      min-height: 120px;
+      max-height: none;
+      overflow: visible;
+      white-space: pre-wrap;
+    }
+
+    .log-ok { color: var(--oli-green); }
+    .log-warn { color: #e8b84a; }
+    .log-err { color: #f28b82; }
+
+    pre.json {
+      margin: 20px 0 0;
+      font: 400 0.78rem/1.5 var(--mono);
+      background: transparent;
+      border: none;
+      padding: 0;
+      overflow: auto;
+      max-height: none;
+      color: var(--ink-soft);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 8px 16px 8px 0;
+    }
+
+    th { color: var(--muted); font-weight: 500; }
+
+    .metric {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 36px 64px;
+      margin: 28px 0 8px;
+    }
+
+    .metric-item span {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .metric-item strong {
+      display: block;
+      font-size: clamp(1.4rem, 3vw, 2rem);
+      font-weight: 600;
+      line-height: 1;
+      color: var(--oli-green);
+      letter-spacing: -0.03em;
+    }
+
+    .hint {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+
+    .step-confirm {
+      display: none;
+      margin-top: 20px;
+      padding: 16px 18px;
+      border-radius: 16px;
+      background: var(--paper);
+    }
+
+    .step-confirm.is-visible {
+      display: block;
+    }
+
+    .step-confirm-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .step-confirm-icon {
+      flex-shrink: 0;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .is-success .step-confirm-icon {
+      background: rgba(127, 185, 0, 0.18);
+      color: var(--oli-green-dark);
+    }
+
+    .is-error .step-confirm-icon {
+      background: rgba(224, 82, 82, 0.12);
+      color: #c0392b;
+    }
+
+    .is-pending .step-confirm-icon {
+      background: rgba(105, 105, 105, 0.12);
+      color: var(--muted);
+    }
+
+    .is-warn .step-confirm-icon {
+      background: rgba(232, 184, 74, 0.18);
+      color: #9a7200;
+    }
+
+    .step-confirm-title {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .step-confirm-desc {
+      margin: 0 0 10px 34px;
+      font-size: 0.85rem;
+      line-height: 1.45;
+      color: var(--ink-soft);
+    }
+
+    .step-confirm-details {
+      margin: 0 0 0 34px;
+      padding: 0;
+      list-style: none;
+      font: 400 0.78rem/1.55 var(--mono);
+      color: var(--muted);
+    }
+
+    .step-confirm-details li + li {
+      margin-top: 4px;
+    }
+
+    .step-confirm-details strong {
+      color: var(--ink-soft);
+      font-weight: 500;
+    }
+
+    .oli-card.is-step-done {
+      outline: 2px solid rgba(127, 185, 0, 0.35);
+      outline-offset: 0;
+    }
+  </style>
+</head>
+<body>
+  <nav class="topbar" aria-label="OLI">
+    <a class="brand" href="https://www.my-oli.com/" target="_blank" rel="noopener noreferrer" aria-label="OLI home">
+      <svg class="brand-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 83 54" aria-hidden="true">
+        <path d="M 43.057 18.026 C 43.057 20.225 41.273 22.008 39.075 22.008 C 36.877 22.008 35.092 20.225 35.092 18.026 C 35.092 15.827 36.875 14.043 39.075 14.043 C 41.275 14.043 43.057 15.827 43.057 18.026 Z" fill="#d1d1d1"/>
+        <path d="M 27.568 29.318 L 25.208 29.318 C 24.231 29.318 23.438 28.523 23.438 27.546 L 23.438 1.771 C 23.438 0.792 24.23 0 25.208 0 L 27.568 0 C 28.545 0 29.338 0.792 29.338 1.771 L 29.338 27.546 C 29.338 28.523 28.545 29.318 27.568 29.318 Z" fill="#9aea00"/>
+        <path d="M 26.454 43.126 C 22.898 43.126 19.424 41.889 16.675 39.642 C 16.31 39.346 16.08 38.917 16.032 38.45 C 15.985 37.982 16.125 37.517 16.423 37.151 L 17.918 35.326 C 18.536 34.568 19.649 34.457 20.408 35.074 C 22.108 36.461 24.255 37.225 26.455 37.225 C 31.728 37.225 36.019 32.936 36.019 27.66 C 36.019 26.684 36.812 25.891 37.79 25.891 L 40.15 25.891 C 41.127 25.891 41.921 26.683 41.921 27.66 C 41.921 36.19 34.984 43.125 26.456 43.125 Z" fill="#9aea00"/>
+        <path d="M 26.388 54 C 11.838 54 0 42.163 0 27.613 C 0 17.37 6.072 7.957 15.467 3.63 C 16.013 3.376 16.54 3.147 17.112 3.338 C 17.8 3.567 17.975 3.983 17.975 4.588 L 17.975 7.852 C 17.975 8.51 17.609 9.115 17.023 9.42 C 10.264 12.943 5.896 20.084 5.896 27.614 C 5.896 38.914 15.088 48.104 26.387 48.104 C 37.686 48.104 46.876 38.914 46.876 27.614 C 46.876 26.638 47.667 25.846 48.645 25.846 L 51.004 25.846 C 51.981 25.846 52.773 26.638 52.773 27.614 C 52.773 42.164 40.935 54.002 26.387 54.002 Z" fill="#9aea00"/>
+        <path d="M 83 2.844 C 83.001 2.53 82.726 2.036 82.254 2.049 L 79.247 2.049 C 78.888 2.036 78.484 2.462 78.456 2.844 L 78.456 21.009 C 78.439 21.451 78.826 21.832 79.244 21.844 L 82.189 21.844 C 82.664 21.832 82.979 21.473 83 21.009 Z" fill="#d1d1d1"/>
+        <path d="M 75.768 20.99 C 75.751 21.397 75.302 21.846 74.786 21.846 L 68.691 21.846 C 65.504 21.846 64.741 19.557 64.781 16.396 L 64.781 2.841 C 64.809 2.46 65.213 2.033 65.573 2.047 L 68.58 2.047 C 69.051 2.033 69.321 2.527 69.319 2.841 L 69.319 16.462 C 69.319 17.134 69.382 17.371 69.632 17.634 C 69.88 17.898 70.189 18 70.817 18 L 74.831 18 C 75.235 17.993 75.751 18.398 75.768 18.835 L 75.768 20.992 Z" fill="#d1d1d1"/>
+        <path d="M 57.777 11.92 L 57.777 11.935 C 57.795 16.799 56.304 18.366 54.077 18.366 C 54.065 18.366 54.053 18.365 54.041 18.365 L 54.04 18.365 C 54.027 18.365 54.015 18.366 54.003 18.366 C 51.776 18.366 50.285 16.799 50.303 11.935 L 50.303 11.92 C 50.285 7.056 51.776 5.488 54.003 5.488 C 54.015 5.488 54.027 5.49 54.04 5.491 L 54.041 5.491 C 54.053 5.491 54.065 5.488 54.077 5.488 C 56.304 5.488 57.795 7.056 57.777 11.92 Z M 54.144 1.627 C 54.108 1.627 54.075 1.631 54.04 1.631 C 54.004 1.631 53.97 1.627 53.935 1.627 C 46.287 1.609 46.02 8.038 46.02 10.927 L 46.02 12.968 C 46.02 15.857 46.286 22.286 53.935 22.268 C 53.97 22.268 54.004 22.264 54.04 22.264 C 54.075 22.264 54.108 22.268 54.144 22.268 C 61.792 22.286 62.06 15.857 62.06 12.968 L 62.06 10.927 C 62.06 8.038 61.793 1.61 54.144 1.627 Z" fill="#d1d1d1"/>
+      </svg>
+    </a>
+  </nav>
+
+  <header class="hero">
+    <h1>CDR ingest &amp; CO₂ intensity lab</h1>
+  </header>
+
+  <main>
+    <div class="sections">
+      <section class="oli-card" id="card-connection">
+        <div class="oli-card-head">
+          <div class="oli-card-title-wrap">
+            <span class="oli-card-step" aria-hidden="true">·</span>
+            <h2 class="oli-card-title">Connection</h2>
+          </div>
+          <button type="button" class="oli-card-action" id="cardConnectionGo" aria-label="Focus connection settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+        <p class="oli-card-lead">Node and OCPI routing</p>
+        <p class="oli-card-desc">Defaults for node URL, OCPI parties, and CO₂ grid zone.</p>
+        <div class="oli-card-body">
+          <div class="fields-loose">
+            <div class="field">
+              <label for="nodeBase">Node base URL</label>
+              <input id="nodeBase" value="http://localhost:9999">
+            </div>
+            <div class="field">
+              <label for="apiPrefix">API prefix</label>
+              <input id="apiPrefix" value="ocn-v2">
+            </div>
+            <div class="field field-wide">
+              <label for="authToken">OCPI Authorization (e.g. Token abc…)</label>
+              <input id="authToken" value="Token randomkey">
+            </div>
+            <div class="field">
+              <label for="fromParty">From party / country</label>
+              <div class="inline-pair">
+                <input id="fromCountry" value="DE" placeholder="country">
+                <input id="fromParty" value="ABC" placeholder="party">
+              </div>
+            </div>
+            <div class="field">
+              <label for="toParty">To party / country</label>
+              <div class="inline-pair">
+                <input id="toCountry" value="DE" placeholder="country">
+                <input id="toParty" value="ABE" placeholder="party">
+              </div>
+            </div>
+            <div class="field">
+              <label for="co2Zone">CO₂ zone</label>
+              <input id="co2Zone" value="DE_LU">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="oli-card" id="card-send">
+        <div class="oli-card-head">
+          <div class="oli-card-title-wrap">
+            <span class="oli-card-step" aria-hidden="true">1</span>
+            <h2 class="oli-card-title">Send CDR</h2>
+          </div>
+          <button type="button" class="oli-card-action" id="cardSendGo" aria-label="Send CDR via OCPI">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+        <p class="oli-card-lead">Ingest a charging record</p>
+        <p class="oli-card-desc">POST through the node OCPI receiver; the EDX plugin forwards to the CDR service when the OCPI response status is 1000.</p>
+        <div class="oli-card-body">
+          <label for="cdrBody">OCPI CDR JSON</label>
+          <textarea id="cdrBody"></textarea>
+          <div class="actions">
+            <button type="button" id="btnNewId">New CDR id</button>
+            <button type="button" class="secondary" id="btnOcpi">POST via OCPI (node)</button>
+          </div>
+          <p class="hint"><code>POST …/ocpi/receiver/2.2.1/cdrs</code> → node routing → EDX forwarder → CDR service ingest.</p>
+          <div class="step-confirm" id="sendConfirm" role="status" aria-live="polite" hidden>
+            <div class="step-confirm-head">
+              <span class="step-confirm-icon" id="sendConfirmIcon" aria-hidden="true">✓</span>
+              <p class="step-confirm-title" id="sendConfirmTitle">Step 1</p>
+            </div>
+            <p class="step-confirm-desc" id="sendConfirmDesc"></p>
+            <ul class="step-confirm-details" id="sendConfirmDetails"></ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="oli-card" id="card-enrich">
+        <div class="oli-card-head">
+          <div class="oli-card-title-wrap">
+            <span class="oli-card-step" aria-hidden="true">2</span>
+            <h2 class="oli-card-title">Enrich</h2>
+          </div>
+          <button type="button" class="oli-card-action" id="cardEnrichGo" aria-label="Enrich CDR">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+        <p class="oli-card-lead">Retrieve &amp; enrich by CDR id</p>
+        <p class="oli-card-desc">
+          <code>GET …/cdrs/enriched</code> — map OCPI id → ingest service id, load raw CDR, fetch CO₂ for charging periods,
+          return CDR with <code>co2</code> on each <code>charging_period</code>.
+        </p>
+        <div class="oli-card-body">
+          <label for="cdrIdFilter">CDR id</label>
+          <input id="cdrIdFilter" placeholder="cdr-…">
+          <div class="actions">
+            <button type="button" class="secondary" id="btnEnrich">Enrich</button>
+            <button type="button" class="ghost" id="btnPoll">Poll until ingested</button>
+          </div>
+          <div class="step-confirm" id="enrichConfirm" role="status" aria-live="polite" hidden>
+            <div class="step-confirm-head">
+              <span class="step-confirm-icon" id="enrichConfirmIcon" aria-hidden="true">✓</span>
+              <p class="step-confirm-title" id="enrichConfirmTitle">Step 2</p>
+            </div>
+            <p class="step-confirm-desc" id="enrichConfirmDesc"></p>
+            <ul class="step-confirm-details" id="enrichConfirmDetails"></ul>
+          </div>
+          <div class="metric" id="metrics"></div>
+          <table id="periodCo2Table" hidden>
+            <thead>
+              <tr>
+                <th>Period start</th>
+                <th>gCO₂eq/kWh</th>
+                <th>Emissions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <pre class="json" id="enrichedOut">No enriched CDR yet.</pre>
+        </div>
+      </section>
+
+      <section class="oli-card" id="card-log">
+        <div class="oli-card-head">
+          <div class="oli-card-title-wrap">
+            <span class="oli-card-step" aria-hidden="true">·</span>
+            <h2 class="oli-card-title">Log</h2>
+          </div>
+          <button type="button" class="oli-card-action" id="cardLogGo" aria-label="Scroll to log">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+        <p class="oli-card-lead">Request trace</p>
+        <p class="oli-card-desc">Timestamps and outcomes for each lab step.</p>
+        <div class="oli-card-body">
+          <div id="log" role="log" aria-live="polite"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    const LAB_CDR_ID = "94864128-50eb-46c6-bd9f-f4323cd4c057";
+
+    const defaultCdr = () => ({
+      country_code: "DE",
+      party_id: "FHG",
+      id: LAB_CDR_ID,
+      start_date_time: "2025-05-21T11:33:27.538Z",
+      end_date_time: "2025-05-21T13:03:27.538Z",
+      session_id: "OLI_OCPI_HUB_1_OCPPJ16_7500",
+      cdr_token: {
+        uid: "MOCK12345",
+        type: "RFID",
+        contract_id: "DE-OLI-C1234567",
+        country_code: "DE",
+        party_id: "OLI"
+      },
+      auth_method: "AUTH_REQUEST",
+      cdr_location: {
+        id: "eb0014c0-34fc-49cc-a338-5fac07724f5f",
+        name: "BANULA Stuttgart",
+        address: "Nobelstrasse 12",
+        city: "Stuttgart",
+        postal_code: "70569",
+        country: "DEU",
+        coordinates: {
+          latitude: "48.7409780",
+          longitude: "9.0994018"
+        },
+        evse_uid: "620",
+        evse_id: "DE*FHG*EOLI*OCPI*HUB1*1",
+        connector_id: "0",
+        connector_standard: "IEC_62196_T2",
+        connector_format: "SOCKET",
+        connector_power_type: "AC_3_PHASE"
+      },
+      currency: "EUR",
+      charging_periods: [
+        {
+          start_date_time: "2025-05-21T11:33:27.538Z",
+          dimensions: [{ type: "ENERGY", volume: "0.506" }]
+        },
+        {
+          start_date_time: "2025-05-21T11:48:27.538Z",
+          dimensions: [{ type: "ENERGY", volume: "0.507" }]
+        },
+        {
+          start_date_time: "2025-05-21T12:03:27.538Z",
+          dimensions: [{ type: "ENERGY", volume: "0.505" }]
+        },
+        {
+          start_date_time: "2025-05-21T12:18:27.538Z",
+          dimensions: [{ type: "ENERGY", volume: "0.504" }]
+        },
+        {
+          start_date_time: "2025-05-21T12:33:27.538Z",
+          dimensions: [{ type: "ENERGY", volume: "0.506" }]
+        },
+        {
+          start_date_time: "2025-05-21T12:48:27.538Z",
+          dimensions: [{ type: "ENERGY", volume: "0.507" }]
+        }
+      ],
+      signed_data: {
+        encoding_method: "OCMF",
+        signed_values: [
+          {
+            nature: "End",
+            plain_data: "3035",
+            signed_data: "OCMF|{\"FV\" : \"1.0\",...}|{\"SA\" : \"ECDSA-secp256k1-SHA256\",\"SD\" : \"304502210088EDC91E557F91FF05464009BB50604A27068B17B381BD6BEA9C7E50009CC9360220316E5947A9D8DFCFF4E580BBB94FAF104E8A6C3C059F4E237FC43C34DF08A353\"}"
+          }
+        ],
+        url: "https://ubstack.iao.fraunhofer.de"
+      },
+      total_cost: {
+        excl_vat: 0.0,
+        incl_vat: 0.0
+      },
+      total_energy: "3.035",
+      total_time: 1.5,
+      total_parking_time: 0.0,
+      credit: false,
+      home_charing_compensation: false,
+      last_updated: "2025-05-21T11:37:45.271Z"
+    });
+
+    let state = { enriched: null };
+
+    function cdrIdentity() {
+      const cdr = parseCdr();
+      return {
+        countryCode: cdr.country_code || $("fromCountry").value.trim(),
+        partyId: cdr.party_id || $("fromParty").value.trim(),
+        cdrId: $("cdrIdFilter").value.trim() || cdr.id
+      };
+    }
+
+    function enrichedUrl() {
+      const id = cdrIdentity();
+      const params = new URLSearchParams({
+        countryCode: id.countryCode,
+        partyId: id.partyId,
+        cdrId: id.cdrId,
+        zone: $("co2Zone").value.trim()
+      });
+      return pluginUrl("/cdrs/enriched") + "?" + params.toString();
+    }
+
+    function log(message, level = "") {
+      const el = $("log");
+      const line = document.createElement("div");
+      if (level) line.className = "log-" + level;
+      line.textContent = "[" + new Date().toISOString().slice(11, 19) + "] " + message;
+      el.appendChild(line);
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function saveSettings() {
+      const keys = ["nodeBase", "apiPrefix", "authToken", "fromCountry", "fromParty", "toCountry", "toParty", "co2Zone"];
+      const data = {};
+      keys.forEach((k) => (data[k] = $(k).value));
+      localStorage.setItem("edxCdrCo2Lab", JSON.stringify(data));
+    }
+
+    function loadSettings() {
+      try {
+        const data = JSON.parse(localStorage.getItem("edxCdrCo2Lab") || "{}");
+        Object.entries(data).forEach(([k, v]) => {
+          if ($(k)) $(k).value = v;
+        });
+      } catch (_) { /* ignore */ }
+    }
+
+    function pluginUrl(path) {
+      const base = $("nodeBase").value.replace(/\/$/, "");
+      const prefix = $("apiPrefix").value.replace(/^\//, "").replace(/\/$/, "");
+      return base + "/" + prefix + "/plugin/edx" + path;
+    }
+
+    function ocpiUrl() {
+      const base = $("nodeBase").value.replace(/\/$/, "");
+      const prefix = $("apiPrefix").value.replace(/^\//, "").replace(/\/$/, "");
+      return base + "/" + prefix + "/ocpi/receiver/2.2.1/cdrs";
+    }
+
+    function ocpiHeaders() {
+      return {
+        "Authorization": $("authToken").value.trim(),
+        "Content-Type": "application/json",
+        "X-Request-ID": crypto.randomUUID(),
+        "X-Correlation-ID": crypto.randomUUID(),
+        "OCPI-from-country-code": $("fromCountry").value.trim(),
+        "OCPI-from-party-id": $("fromParty").value.trim(),
+        "OCPI-to-country-code": $("toCountry").value.trim(),
+        "OCPI-to-party-id": $("toParty").value.trim()
+      };
+    }
+
+    async function fetchJson(url, options = {}) {
+      const res = await fetch(url, options);
+      const text = await res.text();
+      let body;
+      try {
+        body = text ? JSON.parse(text) : null;
+      } catch {
+        body = text;
+      }
+      if (!res.ok) {
+        const err = new Error("HTTP " + res.status + " " + (typeof body === "string" ? body : JSON.stringify(body)));
+        err.status = res.status;
+        err.body = body;
+        throw err;
+      }
+      return body;
+    }
+
+    function parseCdr() {
+      return JSON.parse($("cdrBody").value);
+    }
+
+    function setStep(_n) {
+      /* progress badges removed from UI */
+    }
+
+    const CONFIRM_ICONS = { success: "✓", error: "✕", pending: "…", warn: "!" };
+
+    function setStepConfirm(prefix, status, title, desc, details) {
+      const box = $(prefix + "Confirm");
+      const icon = $(prefix + "ConfirmIcon");
+      const titleEl = $(prefix + "ConfirmTitle");
+      const descEl = $(prefix + "ConfirmDesc");
+      const detailsEl = $(prefix + "ConfirmDetails");
+      const card = prefix === "send" ? $("card-send") : $("card-enrich");
+
+      box.hidden = false;
+      box.classList.add("is-visible");
+      box.classList.remove("is-success", "is-error", "is-pending", "is-warn");
+      box.classList.add("is-" + status);
+      icon.textContent = CONFIRM_ICONS[status] || "·";
+      titleEl.textContent = title;
+      descEl.textContent = desc || "";
+      descEl.hidden = !desc;
+
+      detailsEl.innerHTML = "";
+      (details || []).forEach((row) => {
+        const li = document.createElement("li");
+        li.innerHTML = "<strong>" + row.label + ":</strong> " + row.value;
+        detailsEl.appendChild(li);
+      });
+      detailsEl.hidden = !details || details.length === 0;
+
+      if (card) {
+        card.classList.toggle("is-step-done", status === "success");
+      }
+    }
+
+    function clearStepConfirm(prefix) {
+      const box = $(prefix + "Confirm");
+      box.hidden = true;
+      box.classList.remove("is-visible", "is-success", "is-error", "is-pending", "is-warn");
+      const card = prefix === "send" ? $("card-send") : $("card-enrich");
+      if (card) card.classList.remove("is-step-done");
+    }
+
+    function formatTime() {
+      return new Date().toISOString().replace("T", " ").slice(0, 19) + " UTC";
+    }
+
+    function displayEnrichment(enriched) {
+      const cdr = enriched?.cdr;
+      if (!cdr) {
+        $("enrichedOut").textContent = "No enriched CDR.";
+        return;
+      }
+      const periods = Array.isArray(cdr.charging_periods) ? cdr.charging_periods : [];
+      let energyKwh = 0;
+      periods.forEach((p) => {
+        (p.dimensions || []).forEach((d) => {
+          if (d.type === "ENERGY" && typeof d.volume === "number") energyKwh += d.volume;
+        });
+      });
+      const totalCo2g = cdr.co2_total_gco2eq ?? null;
+      const firstCo2 = periods.find((p) => p.co2)?.co2;
+
+      $("enrichedOut").textContent = JSON.stringify(enriched, null, 2);
+
+      const metrics = $("metrics");
+      metrics.innerHTML = "";
+      const addMetric = (label, value) => {
+        const d = document.createElement("div");
+        d.className = "metric-item";
+        d.innerHTML = "<span>" + label + "</span><strong>" + value + "</strong>";
+        metrics.appendChild(d);
+      };
+      addMetric("Service id", enriched.serviceId || "—");
+      addMetric("Energy", energyKwh ? energyKwh.toFixed(2) + " kWh" : "—");
+      addMetric("Grid zone", firstCo2?.grid_zone || $("co2Zone").value.trim() || "—");
+      addMetric("Est. CO₂", totalCo2g != null ? totalCo2g.toFixed(0) + " gCO₂eq" : "—");
+
+      const tbody = $("periodCo2Table").querySelector("tbody");
+      tbody.innerHTML = "";
+      periods.forEach((p) => {
+        if (!p.co2) return;
+        const tr = document.createElement("tr");
+        tr.innerHTML = "<td>" + (p.start_date_time || "") + "</td><td>"
+          + Number(p.co2.intensity_gco2eq_per_kwh).toFixed(2) + "</td><td>"
+          + Number(p.co2.emissions_gco2eq).toFixed(0) + " g</td>";
+        tbody.appendChild(tr);
+      });
+      $("periodCo2Table").hidden = tbody.children.length === 0;
+
+      const periodsWithCo2 = periods.filter((p) => p.co2).length;
+      setStepConfirm("enrich", totalCo2g != null ? "success" : "warn",
+        totalCo2g != null ? "Step 2 complete — CDR enriched" : "Step 2 partial — CDR loaded, CO₂ incomplete",
+        totalCo2g != null
+          ? "Raw CDR retrieved, grid CO₂ applied to charging periods."
+          : "CDR was found but one or more periods could not be enriched (missing intensity or energy).",
+        [
+          { label: "CDR id", value: enriched.cdrId || "—" },
+          { label: "Service id", value: enriched.serviceId || "—" },
+          { label: "Periods enriched", value: periodsWithCo2 + " / " + periods.length },
+          { label: "Total CO₂", value: totalCo2g != null ? totalCo2g.toFixed(0) + " gCO₂eq" : "—" },
+          { label: "Completed", value: formatTime() }
+        ]
+      );
+
+      log("Enrichment: " + (totalCo2g != null ? totalCo2g.toFixed(0) + " gCO₂eq" : "incomplete"), totalCo2g != null ? "ok" : "warn");
+      setStep(2);
+    }
+
+    async function enrichCdr(silentMiss) {
+      const id = cdrIdentity();
+      if (!id.cdrId) {
+        log("Enter a CDR id to enrich", "warn");
+        setStepConfirm("enrich", "warn", "CDR id required", "Enter the OCPI CDR id from step 1 before enriching.", []);
+        return null;
+      }
+      $("cdrIdFilter").value = id.cdrId;
+      const url = enrichedUrl();
+      if (!silentMiss) {
+        setStepConfirm("enrich", "pending", "Step 2 running…", "Mapping id, loading CDR, fetching CO₂.", [
+          { label: "CDR id", value: id.cdrId },
+          { label: "Identity", value: id.countryCode + "/" + id.partyId }
+        ]);
+      }
+      log("GET " + url);
+      try {
+        const enriched = await fetchJson(url).catch(() => null);
+        state.enriched = enriched;
+        if (enriched?.cdr) {
+          log("Enriched " + id.countryCode + "/" + id.partyId + "/" + id.cdrId + " → serviceId=" + enriched.serviceId, "ok");
+          displayEnrichment(enriched);
+        } else {
+          $("enrichedOut").textContent = "No enriched CDR for " + id.countryCode + "/" + id.partyId + "/" + id.cdrId
+            + " (not ingested yet or mapping missing)";
+          if (!silentMiss) {
+            setStepConfirm("enrich", "warn", "Step 2 not ready — CDR not found",
+              "No mapping or raw CDR yet. Send the CDR in step 1 and wait for ingest, or use Poll until ingested.",
+              [
+                { label: "CDR id", value: id.cdrId },
+                { label: "Checked at", value: formatTime() }
+              ]
+            );
+          }
+          log("Enriched CDR not found", "warn");
+        }
+        return enriched;
+      } catch (e) {
+        if (!silentMiss) {
+          setStepConfirm("enrich", "error", "Step 2 failed", e.message, [
+            { label: "CDR id", value: id.cdrId },
+            { label: "Failed at", value: formatTime() }
+          ]);
+        }
+        log("Enrich failed: " + e.message, "err");
+        return null;
+      }
+    }
+
+    async function pollUntilEnriched() {
+      const id = cdrIdentity();
+      $("cdrIdFilter").value = id.cdrId;
+      setStepConfirm("enrich", "pending", "Waiting for ingest…", "Polling enrich until the CDR appears in the ingest service.", [
+        { label: "CDR id", value: id.cdrId }
+      ]);
+      for (let i = 0; i < 15; i++) {
+        log("Poll enrich attempt " + (i + 1) + "/15");
+        const enriched = await enrichCdr(true);
+        if (enriched?.cdr) return;
+        setStepConfirm("enrich", "pending", "Waiting for ingest… (" + (i + 1) + "/15)",
+          "CDR not available yet — retrying in 2s.", [
+            { label: "CDR id", value: id.cdrId },
+            { label: "Attempt", value: String(i + 1) + " / 15" }
+          ]
+        );
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+      setStepConfirm("enrich", "error", "Step 2 timed out",
+        "CDR was not ingested or enrich failed after 15 attempts.", [
+          { label: "CDR id", value: id.cdrId },
+          { label: "Stopped at", value: formatTime() }
+        ]
+      );
+      log("Timed out — CDR not ingested or enrich failed", "warn");
+    }
+
+    async function sendOcpi() {
+      const cdr = parseCdr();
+      $("cdrIdFilter").value = cdr.id;
+      setStepConfirm("send", "pending", "Step 1 running…", "Posting CDR to the node OCPI receiver.", [
+        { label: "CDR id", value: cdr.id },
+        { label: "Route", value: $("fromCountry").value + "/" + $("fromParty").value + " → " + $("toCountry").value + "/" + $("toParty").value }
+      ]);
+      $("btnOcpi").disabled = true;
+      log("POST OCPI CDR → " + ocpiUrl());
+      try {
+        const res = await fetchJson(ocpiUrl(), {
+          method: "POST",
+          headers: ocpiHeaders(),
+          body: JSON.stringify(cdr)
+        });
+        const ocpiStatus = res?.status_code ?? res?.statusCode ?? null;
+        const forwardOk = ocpiStatus === 1000 || ocpiStatus === "1000";
+        log("OCPI accepted: " + JSON.stringify(res), "ok");
+        setStep(2);
+        if (forwardOk) {
+          setStepConfirm("send", "success", "Step 1 complete — CDR sent",
+            "OCPI accepted with status 1000. EDX plugin should forward to the CDR ingest service.",
+            [
+              { label: "CDR id", value: cdr.id },
+              { label: "OCPI status", value: String(ocpiStatus) },
+              { label: "Party", value: cdr.country_code + "/" + cdr.party_id },
+              { label: "Sent at", value: formatTime() }
+            ]
+          );
+        } else {
+          setStepConfirm("send", "warn", "Step 1 accepted — forward may be skipped",
+            "OCPI returned a response, but status is not 1000 so EDX may not forward to ingest.",
+            [
+              { label: "CDR id", value: cdr.id },
+              { label: "OCPI status", value: ocpiStatus != null ? String(ocpiStatus) : "unknown" },
+              { label: "Sent at", value: formatTime() }
+            ]
+          );
+        }
+      } catch (e) {
+        setStepConfirm("send", "error", "Step 1 failed", e.message, [
+          { label: "CDR id", value: cdr.id },
+          { label: "Failed at", value: formatTime() }
+        ]);
+        log("OCPI failed: " + e.message + " — check parties, routing, and OCPI response status (must be 1000 for EDX forward).", "err");
+      } finally {
+        $("btnOcpi").disabled = false;
+      }
+      saveSettings();
+    }
+
+    $("btnNewId").addEventListener("click", () => {
+      const cdr = parseCdr();
+      cdr.id = crypto.randomUUID();
+      $("cdrBody").value = JSON.stringify(cdr, null, 2);
+      $("cdrIdFilter").value = cdr.id;
+      clearStepConfirm("send");
+      clearStepConfirm("enrich");
+      setStep(1);
+    });
+
+    $("btnOcpi").addEventListener("click", sendOcpi);
+    $("btnEnrich").addEventListener("click", enrichCdr);
+    $("btnPoll").addEventListener("click", pollUntilEnriched);
+
+    $("cardConnectionGo").addEventListener("click", () => $("nodeBase").focus());
+    $("cardSendGo").addEventListener("click", () => $("btnOcpi").click());
+    $("cardEnrichGo").addEventListener("click", () => $("btnEnrich").click());
+    $("cardLogGo").addEventListener("click", () => $("log").scrollIntoView({ behavior: "smooth", block: "nearest" }));
+
+    ["nodeBase", "apiPrefix", "authToken", "fromCountry", "fromParty", "toCountry", "toParty", "co2Zone"].forEach((id) => {
+      $(id).addEventListener("change", saveSettings);
+    });
+
+    loadSettings();
+    const initialCdr = defaultCdr();
+    $("cdrBody").value = JSON.stringify(initialCdr, null, 2);
+    $("cdrIdFilter").value = LAB_CDR_ID;
+    log("Ready. 1) Send CDR via OCPI  2) Enrich by CDR id.");
+  </script>
+</body>
+</html>

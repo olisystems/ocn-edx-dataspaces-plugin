@@ -17,6 +17,7 @@
 package edx.connector;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -31,10 +32,10 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.ServiceLoader;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import edx.connector.persistence.InMemoryCdrIngestMappingStore;
 import org.springframework.core.env.Environment;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
@@ -53,26 +54,10 @@ import snc.openchargingnetwork.node.models.ocpi.ModuleID;
 import snc.openchargingnetwork.node.models.ocpi.PowerType;
 import snc.openchargingnetwork.node.models.ocpi.Price;
 import snc.openchargingnetwork.node.models.ocpi.TokenType;
-import snc.openchargingnetwork.node.plugins.core.NodePlugin;
 import snc.openchargingnetwork.node.plugins.core.OcpiObjectEvent;
 import snc.openchargingnetwork.node.plugins.core.OcpiObjectEventPhase;
 
 class ConnectorPluginTest {
-
-    @Test
-    void pluginExposesStableMetadata() {
-        ConnectorPlugin plugin = new ConnectorPlugin();
-
-        assertEquals("edx", plugin.id());
-        assertEquals("0.1.0-SNAPSHOT", plugin.version());
-    }
-
-    @Test
-    void pluginIsDiscoverableThroughJavaSpi() {
-        ServiceLoader<NodePlugin> plugins = ServiceLoader.load(NodePlugin.class);
-
-        assertTrue(plugins.stream().map(ServiceLoader.Provider::get).anyMatch(ConnectorPlugin.class::isInstance));
-    }
 
     @Test
     void forwarderCanBeConstructed() {
@@ -82,7 +67,7 @@ class ConnectorPluginTest {
             Duration.ofSeconds(5),
             new ObjectMapper()
         );
-        ConnectorPlugin.CdrForwarder forwarder = new ConnectorPlugin.CdrForwarder(client);
+        CdrForwarder forwarder = new CdrForwarder(client, new InMemoryCdrIngestMappingStore());
 
         assertNotNull(forwarder);
     }
@@ -91,7 +76,7 @@ class ConnectorPluginTest {
     void cdrServiceBaseUrlIsRequired() {
         IllegalStateException error = assertThrows(
             IllegalStateException.class,
-            () -> ConnectorPlugin.readRequiredString(
+            () -> EdxConnectorAutoConfiguration.readRequiredString(
                 emptyEnvironment(),
                 "edx.cdr.service.baseUrl",
                 "EDX_CDR_SERVICE_BASE_URL_MISSING_TEST"
@@ -138,7 +123,7 @@ class ConnectorPluginTest {
                 Duration.ofSeconds(5),
                 new ObjectMapper()
             );
-            ConnectorPlugin.CdrForwarder forwarder = new ConnectorPlugin.CdrForwarder(client);
+            CdrForwarder forwarder = new CdrForwarder(client, new InMemoryCdrIngestMappingStore());
 
             forwarder.forwardIfCdr(sampleObjectEvent());
 
@@ -153,11 +138,10 @@ class ConnectorPluginTest {
     }
 
     @Test
-    void forwarderIngestsCdrWhenReceiverReturnsHttpError() throws Exception {
+    void forwarderIngestsWhenOcpiStatusIsSuccessEvenIfHttpError() throws Exception {
         CountDownLatch received = new CountDownLatch(1);
         AtomicReference<String> bodyRef = new AtomicReference<>();
-        AtomicReference<String> apiKeyRef = new AtomicReference<>();
-        HttpServer server = startReceiver(received, bodyRef, apiKeyRef);
+        HttpServer server = startReceiver(received, bodyRef, new AtomicReference<>());
 
         try {
             int port = server.getAddress().getPort();
@@ -167,7 +151,7 @@ class ConnectorPluginTest {
                 Duration.ofSeconds(5),
                 new ObjectMapper()
             );
-            ConnectorPlugin.CdrForwarder forwarder = new ConnectorPlugin.CdrForwarder(client);
+            CdrForwarder forwarder = new CdrForwarder(client, new InMemoryCdrIngestMappingStore());
 
             forwarder.forwardIfCdr(sampleObjectEvent(500, 1000));
 
@@ -179,11 +163,9 @@ class ConnectorPluginTest {
     }
 
     @Test
-    void forwarderIngestsCdrWhenReceiverReturnsOcpiError() throws Exception {
+    void forwarderSkipsWhenOcpiStatusIsNotSuccess() throws Exception {
         CountDownLatch received = new CountDownLatch(1);
-        AtomicReference<String> bodyRef = new AtomicReference<>();
-        AtomicReference<String> apiKeyRef = new AtomicReference<>();
-        HttpServer server = startReceiver(received, bodyRef, apiKeyRef);
+        HttpServer server = startReceiver(received, new AtomicReference<>(), new AtomicReference<>());
 
         try {
             int port = server.getAddress().getPort();
@@ -193,12 +175,77 @@ class ConnectorPluginTest {
                 Duration.ofSeconds(5),
                 new ObjectMapper()
             );
-            ConnectorPlugin.CdrForwarder forwarder = new ConnectorPlugin.CdrForwarder(client);
+            CdrForwarder forwarder = new CdrForwarder(client, new InMemoryCdrIngestMappingStore());
 
             forwarder.forwardIfCdr(sampleObjectEvent(200, 2000));
 
+            assertFalse(received.await(500, TimeUnit.MILLISECONDS));
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void forwarderSkipsWhenOcpiStatusIsMissing() throws Exception {
+        CountDownLatch received = new CountDownLatch(1);
+        HttpServer server = startReceiver(received, new AtomicReference<>(), new AtomicReference<>());
+
+        try {
+            int port = server.getAddress().getPort();
+            CdrServiceClient client = new CdrServiceClient(
+                URI.create("http://127.0.0.1:" + port),
+                "secret",
+                Duration.ofSeconds(5),
+                new ObjectMapper()
+            );
+            CdrForwarder forwarder = new CdrForwarder(client, new InMemoryCdrIngestMappingStore());
+
+            forwarder.forwardIfCdr(sampleObjectEvent(200, null));
+
+            assertFalse(received.await(500, TimeUnit.MILLISECONDS));
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void forwarderStoresMappingAfterSuccessfulIngest() throws Exception {
+        forwarderStoresMappingForIngestResponse(
+            "{\"success\":true,\"extractionStatus\":\"SUCCESS\",\"rawRecordId\":\"raw-1\"}",
+            "raw-1"
+        );
+    }
+
+    @Test
+    void forwarderStoresMappingWhenExtractionFailsButRawRecordIdPresent() throws Exception {
+        forwarderStoresMappingForIngestResponse(
+            "{\"success\":false,\"extractionStatus\":\"FAILED\",\"rawRecordId\":\"raw-failed-1\"}",
+            "raw-failed-1"
+        );
+    }
+
+    private static void forwarderStoresMappingForIngestResponse(String ingestResponseBody, String expectedServiceId)
+        throws Exception {
+        CountDownLatch received = new CountDownLatch(1);
+        InMemoryCdrIngestMappingStore mappingStore = new InMemoryCdrIngestMappingStore();
+        HttpServer server = startReceiver(received, new AtomicReference<>(), new AtomicReference<>(), ingestResponseBody);
+
+        try {
+            int port = server.getAddress().getPort();
+            CdrServiceClient client = new CdrServiceClient(
+                URI.create("http://127.0.0.1:" + port),
+                "secret",
+                Duration.ofSeconds(5),
+                new ObjectMapper()
+            );
+            CdrForwarder forwarder = new CdrForwarder(client, mappingStore);
+
+            forwarder.forwardIfCdr(sampleObjectEvent());
+
             assertTrue(received.await(5, TimeUnit.SECONDS));
-            assertTrue(bodyRef.get().contains("\"id\":\"cdr-1\""));
+            forwarder.shutdown();
+            assertTrue(mappingStore.find("DE", "CPO", "cdr-1").isPresent());
+            assertEquals(expectedServiceId, mappingStore.find("DE", "CPO", "cdr-1").orElseThrow().getServiceId());
         } finally {
             server.stop(0);
         }
@@ -209,11 +256,25 @@ class ConnectorPluginTest {
         AtomicReference<String> bodyRef,
         AtomicReference<String> apiKeyRef
     ) throws IOException {
+        return startReceiver(
+            received,
+            bodyRef,
+            apiKeyRef,
+            "{\"success\":true,\"extractionStatus\":\"SUCCESS\",\"rawRecordId\":\"raw-1\"}"
+        );
+    }
+
+    private static HttpServer startReceiver(
+        CountDownLatch received,
+        AtomicReference<String> bodyRef,
+        AtomicReference<String> apiKeyRef,
+        String ingestResponseBody
+    ) throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/api/cdr-ingest", exchange -> {
             apiKeyRef.set(exchange.getRequestHeaders().getFirst(CdrServiceClient.API_KEY_HEADER));
             bodyRef.set(new String(exchange.getRequestBody().readAllBytes()));
-            byte[] response = "{\"success\":true,\"extractionStatus\":\"SUCCESS\",\"rawRecordId\":\"raw-1\"}".getBytes();
+            byte[] response = ingestResponseBody.getBytes();
             exchange.sendResponseHeaders(201, response.length);
             exchange.getResponseBody().write(response);
             exchange.close();

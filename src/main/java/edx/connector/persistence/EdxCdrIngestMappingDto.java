@@ -12,15 +12,29 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
-*/
+ */
 
-package edx.connector.cdrservice;
+package edx.connector.persistence;
 
-public record LocationDto(
-    Double latitude,
-    Double longitude,
-    String country,
-    String city,
-    String evseId
+import java.time.Instant;
+
+public record EdxCdrIngestMappingDto(
+    String countryCode,
+    String partyId,
+    String cdrId,
+    String serviceId,
+    Instant createdAt,
+    Instant updatedAt
 ) {
+
+    public static EdxCdrIngestMappingDto from(EdxCdrIngestMapping mapping) {
+        return new EdxCdrIngestMappingDto(
+            mapping.getCountryCode(),
+            mapping.getPartyId(),
+            mapping.getCdrId(),
+            mapping.getServiceId(),
+            mapping.getCreatedAt(),
+            mapping.getUpdatedAt()
+        );
+    }
 }

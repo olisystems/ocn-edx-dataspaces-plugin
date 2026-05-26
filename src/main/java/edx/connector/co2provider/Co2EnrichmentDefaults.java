@@ -12,12 +12,17 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
-*/
+ */
 
-package edx.connector.cdrservice;
+package edx.connector.co2provider;
 
-public record PeriodDto(
-    String start,
-    String end
+public record Co2EnrichmentDefaults(
+    String timeResolution,
+    String calculationType,
+    String emissionType
 ) {
+
+    public static Co2EnrichmentDefaults standard() {
+        return new Co2EnrichmentDefaults("Hourly", "Consumption", "Lifecycle");
+    }
 }

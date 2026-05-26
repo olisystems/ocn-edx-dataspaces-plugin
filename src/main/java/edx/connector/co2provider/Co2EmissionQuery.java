@@ -12,9 +12,16 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
-*/
+ */
 
-package edx.connector.cdrservice;
+package edx.connector.co2provider;
 
-public record EnergyDto(Double totalKWh) {
+public record Co2EmissionQuery(
+    String start,
+    String end,
+    String zone,
+    String timeResolution,
+    String calculationType,
+    String emissionType
+) {
 }
