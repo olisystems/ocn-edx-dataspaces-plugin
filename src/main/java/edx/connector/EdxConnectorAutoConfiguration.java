@@ -16,14 +16,23 @@
 
 package edx.connector;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edx.connector.cdrservice.CdrServiceClient;
+import edx.connector.cdrservice.CdrServicePaths;
 import edx.connector.cdrservice.IngestedCdrLookup;
+import edx.connector.edc.CpoAssetProvisioningService;
+import edx.connector.edc.CpoPolicyUpdateService;
+import edx.connector.edc.EdcAssetSettings;
+import edx.connector.edc.EdcManagementClient;
+import edx.connector.edc.PolicyConsumerSubject;
 import edx.connector.enrichment.CdrCo2EnrichmentService;
 import edx.connector.co2provider.Co2EnrichmentDefaults;
 import edx.connector.co2provider.Co2ProviderClient;
 import java.net.URI;
 import java.time.Duration;
+import java.util.Collections;
+import java.util.List;
 import java.util.logging.Logger;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -37,6 +46,8 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import snc.openchargingnetwork.node.components.HttpClientComponent;
 import edx.connector.persistence.EdxCdrIngestMapping;
 import edx.connector.persistence.EdxCdrIngestMappingRepository;
+import edx.connector.persistence.EdxCpoAssetMapping;
+import edx.connector.persistence.EdxCpoAssetMappingRepository;
 
 @Configuration
 @ComponentScan(
@@ -46,8 +57,8 @@ import edx.connector.persistence.EdxCdrIngestMappingRepository;
         classes = EdxEnrichedCdrController.class
     )
 )
-@EntityScan(basePackageClasses = EdxCdrIngestMapping.class)
-@EnableJpaRepositories(basePackageClasses = EdxCdrIngestMappingRepository.class)
+@EntityScan(basePackageClasses = { EdxCdrIngestMapping.class, EdxCpoAssetMapping.class })
+@EnableJpaRepositories(basePackageClasses = { EdxCdrIngestMappingRepository.class, EdxCpoAssetMappingRepository.class })
 @ConditionalOnProperty(prefix = "edx.cdr.service", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class EdxConnectorAutoConfiguration {
 
@@ -92,9 +103,14 @@ public class EdxConnectorAutoConfiguration {
     @Bean(destroyMethod = "shutdown")
     public CdrForwarder cdrForwarder(
         CdrServiceClient cdrServiceClient,
-        edx.connector.persistence.CdrIngestMappingStore mappingStore
+        edx.connector.persistence.CdrIngestMappingStore mappingStore,
+        org.springframework.beans.factory.ObjectProvider<CpoAssetProvisioningService> assetProvisioningService
     ) {
-        return new CdrForwarder(cdrServiceClient, mappingStore);
+        return new CdrForwarder(
+            cdrServiceClient,
+            mappingStore,
+            assetProvisioningService.getIfAvailable()
+        );
     }
 
     @Bean
@@ -103,6 +119,83 @@ public class EdxConnectorAutoConfiguration {
         edx.connector.persistence.CdrIngestMappingStore mappingStore
     ) {
         return new IngestedCdrLookup(cdrServiceClient, mappingStore);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "edx.edc.management", name = "enabled", havingValue = "true")
+    public EdcManagementClient edcManagementClient(Environment environment, HttpClientComponent httpClientComponent) {
+        URI baseUri = URI.create(readRequiredString(
+            environment,
+            "edx.edc.management.baseUrl",
+            "EDX_EDC_MANAGEMENT_BASE_URL"
+        ));
+        String apiKey = readString(environment, "edx.edc.management.apiKey", "EDX_EDC_MANAGEMENT_API_KEY", "");
+        int timeoutMs = readInt(
+            environment,
+            "edx.edc.management.timeoutMs",
+            "EDX_EDC_MANAGEMENT_TIMEOUT_MS",
+            DEFAULT_TIMEOUT_MS
+        );
+        LOGGER.info("EDX EDC management client enabled; baseUrl=" + baseUri);
+        return new EdcManagementClient(
+            baseUri,
+            apiKey,
+            Duration.ofMillis(timeoutMs),
+            cdrObjectMapper(httpClientComponent)
+        );
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "edx.edc.management", name = "enabled", havingValue = "true")
+    public EdcAssetSettings edcAssetSettings(Environment environment, HttpClientComponent httpClientComponent) {
+        String assetPrefix = readString(environment, "edx.edc.asset.prefix", "EDX_EDC_ASSET_PREFIX", "cdr-data");
+        String co2RelevantCdrUrl = readString(
+            environment,
+            "edx.edc.asset.co2RelevantCdrUrl",
+            "EDX_EDC_ASSET_CO2_RELEVANT_CDR_URL",
+            ""
+        );
+        if (co2RelevantCdrUrl.isBlank()) {
+            co2RelevantCdrUrl = defaultCo2RelevantCdrUrl(
+                readRequiredString(environment, "edx.cdr.service.baseUrl", "EDX_CDR_SERVICE_BASE_URL")
+            );
+        }
+        String cdrServiceApiKey = readString(environment, "edx.cdr.service.apiKey", "EDX_CDR_SERVICE_API_KEY", "");
+        ObjectMapper mapper = cdrObjectMapper(httpClientComponent);
+        List<PolicyConsumerSubject> defaultConsumers = readDefaultConsumers(environment, mapper);
+        return new EdcAssetSettings(assetPrefix, co2RelevantCdrUrl, cdrServiceApiKey, defaultConsumers);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "edx.edc.management", name = "enabled", havingValue = "true")
+    public CpoAssetProvisioningService cpoAssetProvisioningService(
+        EdcManagementClient edcManagementClient,
+        edx.connector.persistence.CpoAssetMappingStore mappingStore,
+        HttpClientComponent httpClientComponent,
+        EdcAssetSettings edcAssetSettings
+    ) {
+        return new CpoAssetProvisioningService(
+            edcManagementClient,
+            mappingStore,
+            cdrObjectMapper(httpClientComponent),
+            edcAssetSettings
+        );
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "edx.edc.management", name = "enabled", havingValue = "true")
+    public CpoPolicyUpdateService cpoPolicyUpdateService(
+        EdcManagementClient edcManagementClient,
+        edx.connector.persistence.CpoAssetMappingStore mappingStore,
+        CpoAssetProvisioningService cpoAssetProvisioningService,
+        HttpClientComponent httpClientComponent
+    ) {
+        return new CpoPolicyUpdateService(
+            edcManagementClient,
+            mappingStore,
+            cpoAssetProvisioningService,
+            cdrObjectMapper(httpClientComponent)
+        );
     }
 
     @Bean
@@ -192,11 +285,42 @@ public class EdxConnectorAutoConfiguration {
     }
 
     private static ObjectMapper cdrObjectMapper(HttpClientComponent httpClientComponent) {
+        if (httpClientComponent == null) {
+            return new ObjectMapper();
+        }
         try {
             return httpClientComponent.getMapper();
         } catch (Exception e) {
             LOGGER.warning("Unable to use node ObjectMapper; falling back to default mapper: " + e.getMessage());
             return new ObjectMapper();
+        }
+    }
+
+    static String defaultCo2RelevantCdrUrl(String cdrServiceBaseUrl) {
+        String base = cdrServiceBaseUrl.trim();
+        while (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
+        if (base.endsWith("/api")) {
+            return base + "/v1/co2-relevant-cdr";
+        }
+        return base + CdrServicePaths.API_V1 + "/co2-relevant-cdr";
+    }
+
+    private static List<PolicyConsumerSubject> readDefaultConsumers(Environment environment, ObjectMapper mapper) {
+        String json = readString(
+            environment,
+            "edx.edc.asset.defaultConsumersJson",
+            "EDX_EDC_ASSET_DEFAULT_CONSUMERS_JSON",
+            ""
+        );
+        if (json.isBlank()) {
+            return Collections.emptyList();
+        }
+        try {
+            return mapper.readValue(json, new TypeReference<>() {});
+        } catch (Exception e) {
+            throw new IllegalStateException("Invalid edx.edc.asset.defaultConsumersJson", e);
         }
     }
 }

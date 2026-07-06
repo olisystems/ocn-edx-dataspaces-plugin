@@ -67,7 +67,7 @@ class ConnectorPluginTest {
             Duration.ofSeconds(5),
             new ObjectMapper()
         );
-        CdrForwarder forwarder = new CdrForwarder(client, new InMemoryCdrIngestMappingStore());
+        CdrForwarder forwarder = new CdrForwarder(client, new InMemoryCdrIngestMappingStore(), null);
 
         assertNotNull(forwarder);
     }
@@ -123,13 +123,16 @@ class ConnectorPluginTest {
                 Duration.ofSeconds(5),
                 new ObjectMapper()
             );
-            CdrForwarder forwarder = new CdrForwarder(client, new InMemoryCdrIngestMappingStore());
+            CdrForwarder forwarder = new CdrForwarder(client, new InMemoryCdrIngestMappingStore(), null);
 
             forwarder.forwardIfCdr(sampleObjectEvent());
 
             assertTrue(received.await(5, TimeUnit.SECONDS));
             String body = bodyRef.get();
             assertEquals("secret", apiKeyRef.get());
+            assertTrue(body.contains("\"source\":\"DE-CPO\""));
+            assertTrue(body.contains("\"target\":\"FR-EMS\""));
+            assertTrue(body.contains("\"cdr\":{"));
             assertTrue(body.contains("\"id\":\"cdr-1\""));
             assertTrue(body.contains("\"countryCode\":\"DE\""));
         } finally {
@@ -151,7 +154,7 @@ class ConnectorPluginTest {
                 Duration.ofSeconds(5),
                 new ObjectMapper()
             );
-            CdrForwarder forwarder = new CdrForwarder(client, new InMemoryCdrIngestMappingStore());
+            CdrForwarder forwarder = new CdrForwarder(client, new InMemoryCdrIngestMappingStore(), null);
 
             forwarder.forwardIfCdr(sampleObjectEvent(500, 1000));
 
@@ -175,7 +178,7 @@ class ConnectorPluginTest {
                 Duration.ofSeconds(5),
                 new ObjectMapper()
             );
-            CdrForwarder forwarder = new CdrForwarder(client, new InMemoryCdrIngestMappingStore());
+            CdrForwarder forwarder = new CdrForwarder(client, new InMemoryCdrIngestMappingStore(), null);
 
             forwarder.forwardIfCdr(sampleObjectEvent(200, 2000));
 
@@ -198,7 +201,7 @@ class ConnectorPluginTest {
                 Duration.ofSeconds(5),
                 new ObjectMapper()
             );
-            CdrForwarder forwarder = new CdrForwarder(client, new InMemoryCdrIngestMappingStore());
+            CdrForwarder forwarder = new CdrForwarder(client, new InMemoryCdrIngestMappingStore(), null);
 
             forwarder.forwardIfCdr(sampleObjectEvent(200, null));
 
@@ -238,7 +241,7 @@ class ConnectorPluginTest {
                 Duration.ofSeconds(5),
                 new ObjectMapper()
             );
-            CdrForwarder forwarder = new CdrForwarder(client, mappingStore);
+            CdrForwarder forwarder = new CdrForwarder(client, mappingStore, null);
 
             forwarder.forwardIfCdr(sampleObjectEvent());
 
@@ -271,7 +274,7 @@ class ConnectorPluginTest {
         String ingestResponseBody
     ) throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.createContext("/api/cdr-ingest", exchange -> {
+        server.createContext("/api/v1/cdr-ingest", exchange -> {
             apiKeyRef.set(exchange.getRequestHeaders().getFirst(CdrServiceClient.API_KEY_HEADER));
             bodyRef.set(new String(exchange.getRequestBody().readAllBytes()));
             byte[] response = ingestResponseBody.getBytes();

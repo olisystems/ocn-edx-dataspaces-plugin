@@ -18,6 +18,9 @@ package edx.connector;
 
 import edx.connector.cdrservice.CdrServiceException;
 import edx.connector.co2provider.Co2ProviderException;
+import edx.connector.edc.CpoAssetNotFoundException;
+import edx.connector.edc.CpoPolicyAuthorizationException;
+import edx.connector.edc.EdcManagementException;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -34,6 +37,21 @@ public class EdxPluginExceptionAdvice {
     @ExceptionHandler(Co2ProviderException.class)
     public ResponseEntity<String> handleCo2ProviderException(Co2ProviderException exception) {
         return upstreamError(exception.statusCode(), exception.responseBody(), exception.getMessage());
+    }
+
+    @ExceptionHandler(EdcManagementException.class)
+    public ResponseEntity<String> handleEdcManagementException(EdcManagementException exception) {
+        return upstreamError(exception.statusCode(), exception.responseBody(), exception.getMessage());
+    }
+
+    @ExceptionHandler(CpoPolicyAuthorizationException.class)
+    public ResponseEntity<String> handleCpoPolicyAuthorizationException(CpoPolicyAuthorizationException exception) {
+        return ResponseEntity.status(401).contentType(MediaType.APPLICATION_JSON).body(exception.getMessage());
+    }
+
+    @ExceptionHandler(CpoAssetNotFoundException.class)
+    public ResponseEntity<String> handleCpoAssetNotFoundException(CpoAssetNotFoundException exception) {
+        return ResponseEntity.status(404).contentType(MediaType.APPLICATION_JSON).body(exception.getMessage());
     }
 
     private static ResponseEntity<String> upstreamError(int statusCode, String responseBody, String message) {

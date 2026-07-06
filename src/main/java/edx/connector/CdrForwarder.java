@@ -16,8 +16,10 @@
 
 package edx.connector;
 
+import edx.connector.cdrservice.CdrIngestRequestDto;
 import edx.connector.cdrservice.CdrIngestResponseDto;
 import edx.connector.cdrservice.CdrServiceClient;
+import edx.connector.edc.CpoAssetProvisioningService;
 import edx.connector.persistence.CdrIngestMappingStore;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -33,11 +35,17 @@ public final class CdrForwarder {
 
     private final CdrServiceClient cdrServiceClient;
     private final CdrIngestMappingStore mappingStore;
+    private final CpoAssetProvisioningService assetProvisioningService;
     private final java.util.concurrent.ExecutorService executor;
 
-    public CdrForwarder(CdrServiceClient cdrServiceClient, CdrIngestMappingStore mappingStore) {
+    public CdrForwarder(
+        CdrServiceClient cdrServiceClient,
+        CdrIngestMappingStore mappingStore,
+        CpoAssetProvisioningService assetProvisioningService
+    ) {
         this.cdrServiceClient = cdrServiceClient;
         this.mappingStore = mappingStore;
+        this.assetProvisioningService = assetProvisioningService;
         this.executor = java.util.concurrent.Executors.newSingleThreadExecutor(task -> {
             Thread thread = new Thread(task, "edx-cdr-forwarder");
             thread.setDaemon(true);
@@ -66,7 +74,14 @@ public final class CdrForwarder {
     private void post(OcpiObjectEvent event) {
         CDR cdr = (CDR) event.getPayload();
         try {
-            CdrIngestResponseDto response = cdrServiceClient.ingestCdr(cdr);
+            CdrIngestRequestDto request = CdrIngestRequestDto.of(
+                event.getFromCountryCode(),
+                event.getFromPartyId(),
+                event.getToCountryCode(),
+                event.getToPartyId(),
+                cdr
+            );
+            CdrIngestResponseDto response = cdrServiceClient.ingestCdr(request);
             if (response == null) {
                 LOGGER.warning("EDX CDR ingest returned no response for CDR " + cdr.getId());
                 return;
@@ -96,9 +111,17 @@ public final class CdrForwarder {
                         + " (raw stored; extractionStatus=" + response.extractionStatus() + ", success=false)"
                 );
             }
+            provisionCpoAsset(cdr.getCountryCode(), cdr.getPartyID());
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "EDX CDR ingest failed for CDR " + cdr.getId(), e);
         }
+    }
+
+    private void provisionCpoAsset(String countryCode, String partyId) {
+        if (assetProvisioningService == null) {
+            return;
+        }
+        assetProvisioningService.ensureForCpo(countryCode, partyId);
     }
 
     public void shutdown() {

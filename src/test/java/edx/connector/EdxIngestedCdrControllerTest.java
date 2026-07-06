@@ -52,7 +52,7 @@ class EdxIngestedCdrControllerTest {
             ]
             """;
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.createContext("/api/raw-cdr", exchange -> writeJson(exchange, rawBody));
+        server.createContext("/api/v1/raw-cdr", exchange -> writeJson(exchange, rawBody));
         server.start();
 
         try {
@@ -86,7 +86,7 @@ class EdxIngestedCdrControllerTest {
     @Test
     void resolveIngestedCdrReturnsNotFoundWhenMissing() throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.createContext("/api/raw-cdr", exchange -> writeJson(exchange, "[]"));
+        server.createContext("/api/v1/raw-cdr", exchange -> writeJson(exchange, "[]"));
         server.start();
 
         try {
