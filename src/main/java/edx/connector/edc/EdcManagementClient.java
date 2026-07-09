@@ -16,6 +16,7 @@
 
 package edx.connector.edc;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.URI;
@@ -61,6 +62,21 @@ public final class EdcManagementClient {
 
     public EdcIdResponseDto createPolicyDefinition(Map<String, Object> policyDefinition) {
         return post(V3_POLICY_DEFINITIONS, policyDefinition, EdcIdResponseDto.class);
+    }
+
+    public Map<String, Object> getPolicyDefinition(String policyDefinitionId) {
+        HttpRequest request = requestBuilder(V3_POLICY_DEFINITIONS + "/" + policyDefinitionId).GET().build();
+        HttpResponse<String> response = sendRaw(request);
+        try {
+            return mapper.readValue(response.body(), new TypeReference<Map<String, Object>>() {});
+        } catch (IOException e) {
+            throw new EdcManagementException(
+                "Unable to deserialize EDC management response",
+                response.statusCode(),
+                response.body(),
+                e
+            );
+        }
     }
 
     public void updatePolicyDefinition(Map<String, Object> policyDefinition) {

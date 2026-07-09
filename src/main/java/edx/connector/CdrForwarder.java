@@ -74,9 +74,11 @@ public final class CdrForwarder {
     private void post(OcpiObjectEvent event) {
         CDR cdr = (CDR) event.getPayload();
         try {
+            // The source tenant must match the EDC asset's x-source key, which is derived
+            // from the CDR body identity — routing headers may name a hub or differ in case.
             CdrIngestRequestDto request = CdrIngestRequestDto.of(
-                event.getFromCountryCode(),
-                event.getFromPartyId(),
+                cdr.getCountryCode(),
+                cdr.getPartyID(),
                 event.getToCountryCode(),
                 event.getToPartyId(),
                 cdr

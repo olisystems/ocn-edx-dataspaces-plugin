@@ -44,7 +44,7 @@ public final class CpoPolicyUpdateService {
 
     public EdxCpoAssetMapping replaceConsumers(String countryCode, String partyId, List<PolicyConsumerSubject> consumers) {
         EdxCpoAssetMapping mapping = requireMapping(countryCode, partyId);
-        return applyConsumers(mapping, consumers == null ? List.of() : consumers);
+        return applyConsumers(mapping, CpoPolicyBuilder.mergeConsumers(List.of(), consumers));
     }
 
     public EdxCpoAssetMapping addConsumers(String countryCode, String partyId, List<PolicyConsumerSubject> additions) {

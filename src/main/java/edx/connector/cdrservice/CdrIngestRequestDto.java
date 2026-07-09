@@ -31,6 +31,10 @@ public record CdrIngestRequestDto(
     }
 
     public static String formatEndpoint(String countryCode, String partyId) {
-        return countryCode + "-" + partyId;
+        return normalize(countryCode) + "-" + normalize(partyId);
+    }
+
+    private static String normalize(String value) {
+        return value == null ? "" : value.trim().toUpperCase();
     }
 }

@@ -161,15 +161,17 @@
     },
     {
       "name": "03 - Dataspace CPO Assets & Policies (Plugin)",
-      "description": "CPO asset mapping and policy management. Requires `edx.edc.management.enabled=true`. Policy mutations require the CPO's Token C in `cpo_token_c`.",
+      "description": "CPO asset mapping and policy management. Requires `edx.edc.management.enabled=true`. All requests require the CPO's Token C in `cpo_token_c`.",
       "item": [
         {
           "name": "Get CPO asset mapping",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              { "key": "Authorization", "value": "{{cpo_auth}}" }
+            ],
             "url": "{{ocn_base}}/plugin/edx/dataspace/cpos/{{cpo_country_code}}/{{cpo_party_id}}",
-            "description": "Returns asset id, policy ids, and stored allowed consumers after auto-provisioning."
+            "description": "Returns asset id, policy ids, and stored allowed consumers after auto-provisioning. Requires the CPO's Token C."
           },
           "event": [
             {

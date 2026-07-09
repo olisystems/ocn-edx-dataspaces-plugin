@@ -71,6 +71,68 @@ class CpoPolicyBuilderTest {
     }
 
     @Test
+    void extractConsumersRoundTripsBuiltPolicy() {
+        List<PolicyConsumerSubject> consumers = List.of(
+            new PolicyConsumerSubject(PolicyConsumerSubjectType.DID, "did:web:example:alice"),
+            new PolicyConsumerSubject(PolicyConsumerSubjectType.MARKET_PARTNER, "4045399000008")
+        );
+
+        List<PolicyConsumerSubject> extracted = CpoPolicyBuilder.extractConsumers(
+            CpoPolicyBuilder.buildPolicyDefinition("policy-access-DE-CPO", consumers)
+        );
+
+        assertEquals(consumers, extracted);
+        assertEquals(
+            List.of(new PolicyConsumerSubject(PolicyConsumerSubjectType.DID, "did:web:example:alice")),
+            CpoPolicyBuilder.extractConsumers(
+                CpoPolicyBuilder.buildPolicyDefinition(
+                    "policy-access-DE-CPO",
+                    List.of(new PolicyConsumerSubject(PolicyConsumerSubjectType.DID, "did:web:example:alice"))
+                )
+            )
+        );
+        assertTrue(
+            CpoPolicyBuilder.extractConsumers(
+                CpoPolicyBuilder.buildPolicyDefinition("policy-access-DE-CPO", List.of())
+            ).isEmpty()
+        );
+    }
+
+    @Test
+    void extractConsumersReadsOdrlPrefixedJsonLdForm() {
+        Map<String, Object> definition = Map.of(
+            "@id", "policy-access-DE-CPO",
+            "policy", Map.of(
+                "odrl:permission", Map.of(
+                    "odrl:action", Map.of("@id", "odrl:use"),
+                    "odrl:constraint", Map.of(
+                        "odrl:or", List.of(
+                            Map.of(
+                                "odrl:leftOperand", Map.of("@id", "edc:identity"),
+                                "odrl:operator", Map.of("@id", "odrl:eq"),
+                                "odrl:rightOperand", "did:web:example:alice"
+                            ),
+                            Map.of(
+                                "odrl:leftOperand", Map.of("@id", "edc:MarketPartner.mpId"),
+                                "odrl:operator", Map.of("@id", "odrl:eq"),
+                                "odrl:rightOperand", "4045399000008"
+                            )
+                        )
+                    )
+                )
+            )
+        );
+
+        assertEquals(
+            List.of(
+                new PolicyConsumerSubject(PolicyConsumerSubjectType.DID, "did:web:example:alice"),
+                new PolicyConsumerSubject(PolicyConsumerSubjectType.MARKET_PARTNER, "4045399000008")
+            ),
+            CpoPolicyBuilder.extractConsumers(definition)
+        );
+    }
+
+    @Test
     void buildsOrConstraintForMixedConsumerTypes() {
         @SuppressWarnings("unchecked")
         Map<String, Object> policy = (Map<String, Object>) CpoPolicyBuilder.buildPolicyDefinition(

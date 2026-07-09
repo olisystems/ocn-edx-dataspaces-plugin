@@ -67,7 +67,7 @@ public final class CpoAssetProvisioningService {
         List<PolicyConsumerSubject> initialConsumers = settings.defaultConsumers();
 
         try {
-            createIfNeeded(
+            boolean accessPolicyCreated = createIfNeeded(
                 () -> edcManagementClient.createPolicyDefinition(
                     CpoPolicyBuilder.buildPolicyDefinition(accessPolicyId, initialConsumers)
                 ),
@@ -106,6 +106,9 @@ public final class CpoAssetProvisioningService {
                 contractDefinitionId
             );
 
+            List<PolicyConsumerSubject> baselineConsumers = accessPolicyCreated
+                ? initialConsumers
+                : existingPolicyConsumers(accessPolicyId, initialConsumers);
             mappingStore.save(new EdxCpoAssetMapping(
                 normalizedCountry,
                 normalizedParty,
@@ -114,7 +117,7 @@ public final class CpoAssetProvisioningService {
                 accessPolicyId,
                 contractPolicyId,
                 contractDefinitionId,
-                serializeConsumers(initialConsumers)
+                serializeConsumers(baselineConsumers)
             ));
             LOGGER.info(
                 "Provisioned EDX dataspace asset for CPO "
@@ -130,15 +133,35 @@ public final class CpoAssetProvisioningService {
         }
     }
 
-    private void createIfNeeded(EdcCreateAction action, String resourceType, String resourceId) {
+    private boolean createIfNeeded(EdcCreateAction action, String resourceType, String resourceId) {
         try {
             action.run();
+            return true;
         } catch (EdcManagementException e) {
             if (e.statusCode() == 409) {
                 LOGGER.info("EDC " + resourceType + " already exists: " + resourceId);
-                return;
+                return false;
             }
             throw e;
+        }
+    }
+
+    // A pre-existing policy may already grant consumers beyond the configured defaults
+    // (e.g. after a DB rebuild); persisting the defaults as baseline would silently
+    // revoke them on the next consumer update.
+    private List<PolicyConsumerSubject> existingPolicyConsumers(
+        String policyId,
+        List<PolicyConsumerSubject> fallback
+    ) {
+        try {
+            return CpoPolicyBuilder.extractConsumers(edcManagementClient.getPolicyDefinition(policyId));
+        } catch (Exception e) {
+            LOGGER.log(
+                Level.WARNING,
+                "Unable to read existing EDC policy " + policyId + "; using default consumers as baseline",
+                e
+            );
+            return fallback;
         }
     }
 

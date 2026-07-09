@@ -17,6 +17,7 @@
 package edx.connector.edc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -87,6 +88,86 @@ class CpoAssetProvisioningServiceTest {
             assertEquals(4, edcRequests.get());
             assertTrue(store.find("DE", "CPO").isPresent());
             assertEquals("cdr-data:src:DE-CPO:tgt:", store.find("DE", "CPO").orElseThrow().getAssetId());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void adoptsConsumersFromPreExistingEdcPolicyInsteadOfDefaults() throws Exception {
+        String existingPolicy = """
+            {
+              "@id": "policy-access-DE-CPO",
+              "policy": {
+                "@type": "Set",
+                "permission": [{
+                  "action": "use",
+                  "constraint": {
+                    "leftOperand": "MarketPartner.mpId",
+                    "operator": "eq",
+                    "rightOperand": "4045399000008"
+                  }
+                }]
+              }
+            }
+            """;
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/v3/policydefinitions", exchange -> {
+            byte[] body;
+            int status;
+            if ("GET".equals(exchange.getRequestMethod())) {
+                body = existingPolicy.getBytes();
+                status = 200;
+            } else {
+                body = "{}".getBytes();
+                status = 409;
+            }
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(status, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.createContext("/v3/assets", exchange -> {
+            byte[] body = "{}".getBytes();
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(409, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.createContext("/v3/contractdefinitions", exchange -> {
+            byte[] body = "{}".getBytes();
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(409, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.start();
+
+        try {
+            int port = server.getAddress().getPort();
+            InMemoryCpoAssetMappingStore store = new InMemoryCpoAssetMappingStore();
+            CpoAssetProvisioningService service = new CpoAssetProvisioningService(
+                new EdcManagementClient(
+                    URI.create("http://127.0.0.1:" + port),
+                    "",
+                    Duration.ofSeconds(5),
+                    new ObjectMapper()
+                ),
+                store,
+                new ObjectMapper(),
+                new EdcAssetSettings(
+                    "cdr-data",
+                    "https://cdr.example.com/api/v1/co2-relevant-cdr",
+                    "secret",
+                    List.of(new PolicyConsumerSubject(PolicyConsumerSubjectType.DID, "did:web:example:default"))
+                )
+            );
+
+            service.ensureForCpo("DE", "CPO");
+
+            String consumersJson = store.find("DE", "CPO").orElseThrow().getAllowedConsumersJson();
+            assertTrue(consumersJson.contains("4045399000008"));
+            assertFalse(consumersJson.contains("did:web:example:default"));
         } finally {
             server.stop(0);
         }

@@ -141,6 +141,33 @@ class ConnectorPluginTest {
     }
 
     @Test
+    void forwarderUsesCdrBodyIdentityAsIngestSourceWhenRoutedViaHub() throws Exception {
+        CountDownLatch received = new CountDownLatch(1);
+        AtomicReference<String> bodyRef = new AtomicReference<>();
+        HttpServer server = startReceiver(received, bodyRef, new AtomicReference<>());
+
+        try {
+            int port = server.getAddress().getPort();
+            CdrServiceClient client = new CdrServiceClient(
+                URI.create("http://127.0.0.1:" + port),
+                "secret",
+                Duration.ofSeconds(5),
+                new ObjectMapper()
+            );
+            CdrForwarder forwarder = new CdrForwarder(client, new InMemoryCdrIngestMappingStore(), null);
+
+            forwarder.forwardIfCdr(sampleObjectEvent("hub", "xx", "ems", "fr"));
+
+            assertTrue(received.await(5, TimeUnit.SECONDS));
+            String body = bodyRef.get();
+            assertTrue(body.contains("\"source\":\"DE-CPO\""));
+            assertTrue(body.contains("\"target\":\"FR-EMS\""));
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
     void forwarderIngestsWhenOcpiStatusIsSuccessEvenIfHttpError() throws Exception {
         CountDownLatch received = new CountDownLatch(1);
         AtomicReference<String> bodyRef = new AtomicReference<>();
@@ -292,6 +319,26 @@ class ConnectorPluginTest {
     }
 
     private static OcpiObjectEvent sampleObjectEvent(Integer responseStatusCode, Integer ocpiStatusCode) {
+        return sampleObjectEvent("CPO", "DE", "EMS", "FR", responseStatusCode, ocpiStatusCode);
+    }
+
+    private static OcpiObjectEvent sampleObjectEvent(
+        String fromPartyId,
+        String fromCountryCode,
+        String toPartyId,
+        String toCountryCode
+    ) {
+        return sampleObjectEvent(fromPartyId, fromCountryCode, toPartyId, toCountryCode, 200, 1000);
+    }
+
+    private static OcpiObjectEvent sampleObjectEvent(
+        String fromPartyId,
+        String fromCountryCode,
+        String toPartyId,
+        String toCountryCode,
+        Integer responseStatusCode,
+        Integer ocpiStatusCode
+    ) {
         return new OcpiObjectEvent(
             OcpiObjectEventPhase.REQUEST_BODY,
             ModuleID.CDRS,
@@ -302,10 +349,10 @@ class ConnectorPluginTest {
             Map.of(),
             sampleCdr(),
             null,
-            "CPO",
-            "DE",
-            "EMS",
-            "FR",
+            fromPartyId,
+            fromCountryCode,
+            toPartyId,
+            toCountryCode,
             Map.of("X-Request-ID", "request-1"),
             responseStatusCode,
             ocpiStatusCode

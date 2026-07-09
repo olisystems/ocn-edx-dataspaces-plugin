@@ -30,4 +30,12 @@ class CdrIngestRequestDtoTest {
         assertEquals("FR-EMS", request.target());
         assertEquals("cdr-1", ((java.util.Map<?, ?>) request.cdr()).get("id"));
     }
+
+    @Test
+    void normalizesEndpointsToMatchAssetSourceKeys() {
+        CdrIngestRequestDto request = CdrIngestRequestDto.of(" de ", "cpo", "fr", " ems", java.util.Map.of());
+
+        assertEquals("DE-CPO", request.source());
+        assertEquals("FR-EMS", request.target());
+    }
 }
