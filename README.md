@@ -11,20 +11,11 @@ Use this plugin when you want the node to keep its normal OCPI CDR behavior and 
 - Adds the configured API key as an `x-api-key` header.
 - Leaves the node's normal OCPI forwarding behavior unchanged.
 
-## CDR + CO₂ lab UI
+## Docs
 
-Interactive browser test harness:
-
-```bash
-# From repo root, with node on local profile and plugin JAR in plugins/
-xdg-open ocn-node-plugins/ocn-node-edx-plugin/docs/cdr-co2-lab.html
-```
-
-UI uses [OLI Systems](https://www.my-oli.com/) branding (Onest / Fragment Mono, brand colors).
-
-Flow: send CDR via OCPI → enrich by CDR id (retrieve + CO₂ in one call).
-
-Requires `local` or `dev` Spring profile on the node (CORS for browser calls to plugin routes).
+- Architecture (ingest, EDC, enrich, dataspace): [`docs/architecture.md`](docs/architecture.md)
+- Manual testing (curl): [`docs/manual-testing.md`](docs/manual-testing.md)
+- Postman: [`postman/README.md`](postman/README.md)
 
 ## Installation
 

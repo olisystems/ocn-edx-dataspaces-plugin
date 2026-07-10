@@ -1,8 +1,8 @@
 {
   "info": {
-    "_postman_id": "edx-plugin-local-manual",
-    "name": "EDX Plugin — Local Manual Testing",
-    "description": "Manual testing for the OCN Node EDX plugin (`ocn-node-edx-plugin`).\n\n**Before you start**\n1. OCN node v2 running (default `http://localhost:9999/ocn-v2`)\n2. EDX plugin JAR in the node `plugins/` directory\n3. Import companion environment **EDX Plugin — Local**\n4. Set `cdr_service_api_key`, `cpo_token_c`, and optionally `edc_api_key`\n\n**Configuration on the node**\n```properties\nedx.cdr.service.baseUrl=https://banula-cdr-service.services.iee.fraunhofer.de\nedx.cdr.service.apiKey=<your-key>\n\n# Dataspace asset auto-provisioning\nedx.edc.management.enabled=true\nedx.edc.management.baseUrl=http://your-connector/api/management\n\n# Optional CO2 enrichment\nedx.co2.provider.publicApiUrl=https://dataplane-edx.services.iee.fraunhofer.de/api/v2/public/emissions\nedx.co2.provider.token=<your-token>\n```\n\n**Suggested order**\n1. **01 - CDR Lookup** — after a CDR flowed through the node\n2. **02 - CO2 Proxy** — requires CO2 provider config\n3. **03 - Dataspace CPO Assets & Policies** — after first CDR ingest provisions the CPO asset\n4. **04 - Banula CDR Service** — direct calls to the ingest / edx-offer API\n5. **05 - EDC Management** — reference calls to Re4DE connector management API\n\n**CPO policy auth**\nFolder 03 requires `Authorization: Token {{cpo_auth}}`. Paste the CPO's raw Token C into `cpo_token_c`; the collection pre-request script base64-encodes it.",
+    "_postman_id": "edx-plugin-api",
+    "name": "EDX Plugin API",
+    "description": "HTTP API for the OCN Node EDX plugin (`ocn-node-edx-plugin`).\n\n**Setup**\n1. Run ocn-node-v2 with this plugin JAR in `plugins/`\n2. Import companion environment **EDX Plugin — Local**\n3. Set secrets: `cpo_token_c` (OCPI Token C for the CPO), and optionally `cdr_service_api_key` / `edc_api_key` for reference folders\n\n**Node config (example)**\n```properties\nedx.cdr.service.baseUrl=https://your-cdr-service.example.com/api\nedx.cdr.service.apiKey=<key>\n\nedx.edc.management.enabled=true\nedx.edc.management.baseUrl=http://your-connector/api/management\nedx.edc.management.apiKey=<key>\n\nedx.co2.provider.publicApiUrl=https://your-co2-provider.example.com/public/emissions\nedx.co2.provider.token=<token>\n```\n\n**Suggested order**\n1. Send a CDR through OCPI (see `docs/manual-testing.md`)\n2. **01 - CDR Lookup** — mapping / resolve / enriched\n3. **02 - CO2 Proxy** — requires CO₂ provider config\n4. **03 - Dataspace** — after first ingest provisions the CPO asset (`Authorization: Token …`)\n5. **04 / 05** — optional direct CDR service / EDC management calls for debugging\n\n**Auth for dataspace**\nFolder 03 requires the CPO's Token C in `cpo_token_c`. The collection pre-request script base64-encodes it into `cpo_auth`.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -22,7 +22,7 @@
           "",
           "const cpoCountry = pm.environment.get('cpo_country_code') || 'DE';",
           "const cpoParty = pm.environment.get('cpo_party_id') || 'CPO';",
-          "const emspCountry = pm.environment.get('emsp_country_code') || 'FR';",
+          "const emspCountry = pm.environment.get('emsp_country_code') || 'DE';",
           "const emspParty = pm.environment.get('emsp_party_id') || 'EMS';",
           "const source = cpoCountry + '-' + cpoParty;",
           "const target = emspCountry + '-' + emspParty;",
@@ -42,18 +42,20 @@
   ],
   "variable": [
     { "key": "ocn_base", "value": "http://localhost:9999/ocn-v2" },
-    { "key": "cdr_service_base", "value": "https://banula-cdr-service.services.iee.fraunhofer.de" },
+    { "key": "cdr_service_base", "value": "https://your-cdr-service.example.com" },
     { "key": "edc_management_base", "value": "http://localhost:8181/api/management" },
     { "key": "cpo_country_code", "value": "DE" },
     { "key": "cpo_party_id", "value": "CPO" },
-    { "key": "emsp_country_code", "value": "FR" },
+    { "key": "emsp_country_code", "value": "DE" },
     { "key": "emsp_party_id", "value": "EMS" },
     { "key": "cpo_source", "value": "DE-CPO" },
-    { "key": "emsp_target", "value": "FR-EMS" },
+    { "key": "emsp_target", "value": "DE-EMS" },
+    { "key": "market_partner_id", "value": "4045399000008" },
     { "key": "asset_prefix", "value": "cdr-data" },
     { "key": "asset_id", "value": "cdr-data:src:DE-CPO:tgt:" },
     { "key": "cdr_id", "value": "94864128-50eb-46c6-bd9f-f4323cd4c057" },
-    { "key": "co2_zone", "value": "DE_LU" }
+    { "key": "co2_zone", "value": "DE_LU" },
+    { "key": "test_did", "value": "did:web:example.com:consumer" }
   ],
   "item": [
     {
@@ -84,7 +86,7 @@
             "method": "GET",
             "header": [],
             "url": "{{ocn_base}}/plugin/edx/cdrs/raw/{{raw_record_id}}",
-            "description": "Fetches raw CDR from Banula CDR service using the ingest `rawRecordId`."
+            "description": "Fetches raw CDR from the configured CDR service using the ingest `rawRecordId`."
           }
         },
         {
@@ -171,7 +173,7 @@
               { "key": "Authorization", "value": "{{cpo_auth}}" }
             ],
             "url": "{{ocn_base}}/plugin/edx/dataspace/cpos/{{cpo_country_code}}/{{cpo_party_id}}",
-            "description": "Returns asset id, policy ids, and stored allowed consumers after auto-provisioning. Requires the CPO's Token C."
+            "description": "Returns asset id, policy ids, and stored allowed consumers after auto-provisioning."
           },
           "event": [
             {
@@ -198,14 +200,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"consumers\": [\n    {\n      \"type\": \"MARKET_PARTNER\",\n      \"id\": \"{{emsp_target}}\"\n    }\n  ]\n}"
+              "raw": "{\n  \"consumers\": [\n    {\n      \"type\": \"MARKET_PARTNER\",\n      \"id\": \"{{market_partner_id}}\"\n    }\n  ]\n}"
             },
             "url": "{{ocn_base}}/plugin/edx/dataspace/cpos/{{cpo_country_code}}/{{cpo_party_id}}/policy",
             "description": "Replaces the full allowed consumer list on both access and contract policies in EDC."
           }
         },
         {
-          "name": "Add EMSP market partner to policy",
+          "name": "Add market partner to policy",
           "request": {
             "method": "POST",
             "header": [
@@ -214,14 +216,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"consumers\": [\n    {\n      \"type\": \"MARKET_PARTNER\",\n      \"id\": \"{{emsp_target}}\"\n    }\n  ]\n}"
+              "raw": "{\n  \"consumers\": [\n    {\n      \"type\": \"MARKET_PARTNER\",\n      \"id\": \"{{market_partner_id}}\"\n    }\n  ]\n}"
             },
             "url": "{{ocn_base}}/plugin/edx/dataspace/cpos/{{cpo_country_code}}/{{cpo_party_id}}/policy/consumers",
-            "description": "Appends an EMSP by market partner id (MarketPartner.mpId constraint, e.g. 4045399000008)."
+            "description": "Appends a MarketPartner.mpId constraint (e.g. GS1 GLN)."
           }
         },
         {
-          "name": "Add DID consumer to policy (testing)",
+          "name": "Add DID consumer to policy",
           "request": {
             "method": "POST",
             "header": [
@@ -233,17 +235,17 @@
               "raw": "{\n  \"consumers\": [\n    {\n      \"type\": \"DID\",\n      \"id\": \"{{test_did}}\"\n    }\n  ]\n}"
             },
             "url": "{{ocn_base}}/plugin/edx/dataspace/cpos/{{cpo_country_code}}/{{cpo_party_id}}/policy/consumers",
-            "description": "Appends a DID-based consumer for dataspace testing."
+            "description": "Appends an identity (DID) constraint for dataspace consumers."
           }
         }
       ]
     },
     {
-      "name": "04 - Banula CDR Service (Direct)",
-      "description": "Direct calls to the Banula CDR service API ([Swagger](https://banula-cdr-service.services.iee.fraunhofer.de/api/docs)). Uses `x-api-key` header.",
+      "name": "04 - CDR Service (Direct, optional)",
+      "description": "Direct calls to the configured CDR ingest service (same API the plugin uses). Optional — for debugging outside the node.",
       "item": [
         {
-          "name": "Ingest CDR (source / target / cdr)",
+          "name": "Ingest CDR",
           "request": {
             "method": "POST",
             "header": [
@@ -252,10 +254,10 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"source\": \"{{cpo_source}}\",\n  \"target\": \"{{emsp_target}}\",\n  \"cdr\": {\n    \"country_code\": \"{{cpo_country_code}}\",\n    \"party_id\": \"{{cpo_party_id}}\",\n    \"id\": \"{{cdr_id}}\",\n    \"start_date_time\": \"2025-05-21T11:33:27.538Z\",\n    \"end_date_time\": \"2025-05-21T11:37:59.114Z\",\n    \"currency\": \"EUR\",\n    \"total_energy\": 3.035,\n    \"last_updated\": \"2025-05-21T11:37:45.271Z\"\n  }\n}"
+              "raw": "{\n  \"source\": \"{{cpo_source}}\",\n  \"target\": \"{{emsp_target}}\",\n  \"cdr\": {\n    \"country_code\": \"{{cpo_country_code}}\",\n    \"party_id\": \"{{cpo_party_id}}\",\n    \"id\": \"{{cdr_id}}\",\n    \"start_date_time\": \"2025-05-21T11:33:27.538Z\",\n    \"end_date_time\": \"2025-05-21T13:03:27.538Z\",\n    \"currency\": \"EUR\",\n    \"total_energy\": 3.035,\n    \"last_updated\": \"2025-05-21T13:03:27.538Z\"\n  }\n}"
             },
             "url": "{{cdr_service_base}}/api/v1/cdr-ingest",
-            "description": "Same payload shape the plugin sends after OCPI CDR forward."
+            "description": "Same payload shape the plugin sends after a successful OCPI CDR forward."
           },
           "event": [
             {
@@ -263,7 +265,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "if (pm.response.code === 201) {",
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
                   "  const body = pm.response.json();",
                   "  if (body.rawRecordId) pm.environment.set('raw_record_id', body.rawRecordId);",
                   "}"
@@ -298,21 +300,18 @@
             "method": "GET",
             "header": [
               { "key": "x-api-key", "value": "{{cdr_service_api_key}}" },
-              { "key": "x-source", "value": "{{cpo_source}}" },
-              { "key": "x-target", "value": "" }
+              { "key": "x-source", "value": "{{cpo_source}}" }
             ],
             "url": {
-              "raw": "{{cdr_service_base}}/api/v1/co2-relevant-cdr?page=1&limit=10&sortBy=period.start&sortOrder=desc",
+              "raw": "{{cdr_service_base}}/api/v1/co2-relevant-cdr?page=1&limit=10",
               "host": ["{{cdr_service_base}}"],
               "path": ["api", "v1", "co2-relevant-cdr"],
               "query": [
                 { "key": "page", "value": "1" },
-                { "key": "limit", "value": "10" },
-                { "key": "sortBy", "value": "period.start" },
-                { "key": "sortOrder", "value": "desc" }
+                { "key": "limit", "value": "10" }
               ]
             },
-            "description": "edx-offer endpoint. `x-source` / `x-target` are set by the EDC connector from the asset dataAddress."
+            "description": "Backend behind the EDC asset dataAddress. Plugin assets set `header:x-source` and omit empty `x-target`."
           }
         },
         {
@@ -321,29 +320,16 @@
             "method": "GET",
             "header": [
               { "key": "x-api-key", "value": "{{cdr_service_api_key}}" },
-              { "key": "x-source", "value": "{{cpo_source}}" },
-              { "key": "x-target", "value": "" }
+              { "key": "x-source", "value": "{{cpo_source}}" }
             ],
             "url": "{{cdr_service_base}}/api/v1/co2-relevant-cdr/{{co2_relevant_cdr_id}}"
-          }
-        },
-        {
-          "name": "Get raw CDR for CO2-relevant record",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "x-api-key", "value": "{{cdr_service_api_key}}" },
-              { "key": "x-source", "value": "{{cpo_source}}" },
-              { "key": "x-target", "value": "" }
-            ],
-            "url": "{{cdr_service_base}}/api/v1/co2-relevant-cdr/{{co2_relevant_cdr_id}}/raw"
           }
         }
       ]
     },
     {
-      "name": "05 - EDC Management (Re4DE Reference)",
-      "description": "Direct calls to the Re4DE connector management API ([Swagger](https://re4de.github.io/open-api/swagger/?urls.primaryName=%5B0.14.0%5D+Connector+%2F+Management+Api)). Normally the plugin provisions these automatically; use for debugging or manual setup.",
+      "name": "05 - EDC Management (Reference, optional)",
+      "description": "Direct EDC Management API calls matching what the plugin provisions. Normally automatic; use for debugging. See Eclipse Dataspace Connector management API docs for your connector version.",
       "item": [
         {
           "name": "Create CPO asset (co2-relevant-cdr)",
@@ -355,10 +341,10 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"@context\": {\n    \"@vocab\": \"https://w3id.org/edc/v0.0.1/ns/\"\n  },\n  \"@id\": \"{{asset_id}}\",\n  \"properties\": {\n    \"name\": \"CO2-relevant CDR data from {{cpo_source}}\",\n    \"contenttype\": \"application/json\"\n  },\n  \"dataAddress\": {\n    \"type\": \"HttpData\",\n    \"baseUrl\": \"{{cdr_service_base}}/api/v1/co2-relevant-cdr\",\n    \"authKey\": \"x-api-key\",\n    \"authCode\": \"{{cdr_service_api_key}}\",\n    \"proxyBody\": \"true\",\n    \"proxyPath\": \"true\",\n    \"proxyMethod\": \"true\",\n    \"proxyQueryParams\": \"true\",\n    \"header:x-source\": \"{{cpo_source}}\",\n    \"header:x-target\": \"\"\n  }\n}"
+              "raw": "{\n  \"@context\": {\n    \"@vocab\": \"https://w3id.org/edc/v0.0.1/ns/\"\n  },\n  \"@id\": \"{{asset_id}}\",\n  \"properties\": {\n    \"name\": \"CO2-relevant CDR data from {{cpo_source}}\",\n    \"contenttype\": \"application/json\"\n  },\n  \"dataAddress\": {\n    \"type\": \"HttpData\",\n    \"baseUrl\": \"{{cdr_service_base}}/api/v1/co2-relevant-cdr\",\n    \"authKey\": \"x-api-key\",\n    \"authCode\": \"{{cdr_service_api_key}}\",\n    \"proxyBody\": \"true\",\n    \"proxyPath\": \"true\",\n    \"proxyMethod\": \"true\",\n    \"proxyQueryParams\": \"true\",\n    \"header:x-source\": \"{{cpo_source}}\"\n  }\n}"
             },
             "url": "{{edc_management_base}}/v3/assets",
-            "description": "Matches the asset shape auto-created by the plugin: x-source = CPO, x-target empty."
+            "description": "Matches the asset shape auto-created by the plugin: `x-source` = CPO source key; empty `x-target` is omitted."
           }
         },
         {
@@ -371,7 +357,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"@context\": [\n    \"https://w3id.org/edc/connector/management/v0.0.1\"\n  ],\n  \"@type\": \"PolicyDefinition\",\n  \"@id\": \"policy-access-{{cpo_source}}\",\n  \"policy\": {\n    \"@type\": \"Set\",\n    \"permission\": [\n      {\n        \"action\": \"use\",\n        \"constraint\": {\n          \"leftOperand\": \"MarketPartner.mpId\",\n          \"operator\": \"eq\",\n          \"rightOperand\": \"{{emsp_target}}\"\n        }\n      }\n    ],\n    \"prohibition\": [],\n    \"obligation\": []\n  }\n}"
+              "raw": "{\n  \"@context\": [\n    \"https://w3id.org/edc/connector/management/v0.0.1\"\n  ],\n  \"@type\": \"PolicyDefinition\",\n  \"@id\": \"policy-access-{{cpo_source}}\",\n  \"policy\": {\n    \"@type\": \"Set\",\n    \"permission\": [\n      {\n        \"action\": \"use\",\n        \"constraint\": {\n          \"leftOperand\": \"MarketPartner.mpId\",\n          \"operator\": \"eq\",\n          \"rightOperand\": \"{{market_partner_id}}\"\n        }\n      }\n    ],\n    \"prohibition\": [],\n    \"obligation\": []\n  }\n}"
             },
             "url": "{{edc_management_base}}/v3/policydefinitions"
           }
@@ -386,7 +372,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"@context\": [\n    \"https://w3id.org/edc/connector/management/v0.0.1\"\n  ],\n  \"@type\": \"PolicyDefinition\",\n  \"@id\": \"policy-contract-{{cpo_source}}\",\n  \"policy\": {\n    \"@type\": \"Set\",\n    \"permission\": [\n      {\n        \"action\": \"use\",\n        \"constraint\": {\n          \"leftOperand\": \"MarketPartner.mpId\",\n          \"operator\": \"eq\",\n          \"rightOperand\": \"{{emsp_target}}\"\n        }\n      }\n    ],\n    \"prohibition\": [],\n    \"obligation\": []\n  }\n}"
+              "raw": "{\n  \"@context\": [\n    \"https://w3id.org/edc/connector/management/v0.0.1\"\n  ],\n  \"@type\": \"PolicyDefinition\",\n  \"@id\": \"policy-contract-{{cpo_source}}\",\n  \"policy\": {\n    \"@type\": \"Set\",\n    \"permission\": [\n      {\n        \"action\": \"use\",\n        \"constraint\": {\n          \"leftOperand\": \"MarketPartner.mpId\",\n          \"operator\": \"eq\",\n          \"rightOperand\": \"{{market_partner_id}}\"\n        }\n      }\n    ],\n    \"prohibition\": [],\n    \"obligation\": []\n  }\n}"
             },
             "url": "{{edc_management_base}}/v3/policydefinitions"
           }

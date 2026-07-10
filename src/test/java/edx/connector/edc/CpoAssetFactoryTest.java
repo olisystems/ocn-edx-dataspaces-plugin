@@ -26,7 +26,7 @@ import org.junit.jupiter.api.Test;
 class CpoAssetFactoryTest {
 
     @Test
-    void buildsAssetWithSourceHeaderAndEmptyTarget() {
+    void buildsAssetWithSourceHeaderAndOmitsEmptyTarget() {
         Map<String, Object> asset = CpoAssetFactory.buildAsset(
             "cdr-data:src:DE-CPO:tgt:",
             "DE-CPO",
@@ -39,7 +39,7 @@ class CpoAssetFactoryTest {
         Map<String, Object> dataAddress = (Map<String, Object>) asset.get("dataAddress");
         assertEquals("https://cdr.example.com/api/v1/co2-relevant-cdr", dataAddress.get("baseUrl"));
         assertEquals("DE-CPO", dataAddress.get("header:x-source"));
-        assertEquals("", dataAddress.get("header:x-target"));
+        assertTrue(!dataAddress.containsKey("header:x-target"));
         assertEquals("secret", dataAddress.get("authCode"));
     }
 

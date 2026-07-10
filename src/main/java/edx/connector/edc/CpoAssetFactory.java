@@ -70,7 +70,7 @@ public final class CpoAssetFactory {
         dataAddress.put("proxyMethod", "true");
         dataAddress.put("proxyQueryParams", "true");
         dataAddress.put("header:x-source", sourceKey);
-        dataAddress.put("header:x-target", "");
+        // Omit empty x-target: EDC/HttpData can reject or mishandle blank header values.
         return dataAddress;
     }
 
