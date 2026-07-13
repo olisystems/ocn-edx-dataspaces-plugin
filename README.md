@@ -19,20 +19,40 @@ Use this plugin when you want the node to keep its normal OCPI CDR behavior and 
 
 ## Installation
 
-Place the plugin JAR in the node plugin directory:
+### Local
 
 ```bash
-mkdir -p plugins
-cp ocn-node-official-plugin-*.jar plugins/edx.jar
+./gradlew jar
+mkdir -p ../../ocn-node-v2/plugins
+cp build/libs/ocn-node-edx-plugin*.jar ../../ocn-node-v2/plugins/ocn-node-edx-plugin.jar
+cd ../../ocn-node-v2 && ./gradlew bootRun
 ```
 
-Start the node with plugin loading enabled for that directory. For a local node, this is commonly configured with:
+The node loads JARs from `-Dloader.path=…` (default `/app/plugins` in Docker).
 
-```properties
-ocn.plugins.dir=plugins
+### Cluster (PVC + GitHub Action)
+
+The OCN node mounts a PVC at `/app/plugins`. This repo ships a workflow that builds the JAR, copies it into that mount via the running node pod, and restarts the deployment so plugins reload.
+
+**Workflow:** [`.github/workflows/deploy-plugin-jar.yaml`](.github/workflows/deploy-plugin-jar.yaml)
+
+1. Ensure `ocn-node-v2` helm has `oli-app.persistence` mounting `/app/plugins` (see node `infra/helm/values*.yaml`).
+2. In this repo (or org), configure secrets:
+   - `VPN_CONFIG`, `VPN_PASS`, `KUBECONFIG` (same as node deploy)
+   - optional: `OLI_ARGO_SYNC_CLIENT_ID` / `OLI_ARGO_SYNC_PRIVATE_KEY` or `OCN_NODE_READ_TOKEN` to checkout private `ocn-node-v2` for compilation
+3. Optional GitHub Environment vars (`dev` / `int`):
+   - `OCN_NODE_NAMESPACE` (default `oli-banula`)
+   - `OCN_NODE_DEPLOYMENT` (default `ocn-node-v2-dev` / `ocn-node-v2`)
+   - `OCN_NODE_PLUGINS_PATH` (default `/app/plugins`)
+4. Run **Actions → Deploy EDX plugin JAR → Run workflow**, pick `dev` or `int`.
+
+Tag pushes (`v*`) build and deploy to `dev` by default.
+
+After restart, check the node **PLUGINS** banner and:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" https://banula-dev.oli-system.com/ocn-v2/plugin/edx/cdrs
 ```
-
-After startup, the node logs should include the plugin in the `PLUGINS` section.
 
 ## Configuration
 

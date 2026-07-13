@@ -1,0 +1,212 @@
+name: Deploy EDX plugin JAR
+
+# Builds the plugin JAR and copies it into the OCN node's plugins PVC
+# (mounted at /app/plugins), then restarts the node so PropertiesLauncher reloads.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        type: choice
+        options:
+          - dev
+          - int
+        default: dev
+      node_ref:
+        description: ocn-node-v2 git ref used to compile against (includeBuild)
+        required: false
+        type: string
+        default: develop
+      restart_node:
+        description: Rollout-restart the OCN node after copying the JAR
+        required: true
+        type: boolean
+        default: true
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-edx-plugin-${{ github.event.inputs.environment || 'dev' }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      jar_name: ${{ steps.jar.outputs.jar_name }}
+    steps:
+      - name: Generate app token
+        uses: actions/create-github-app-token@v3
+        id: app-token
+        with:
+          client-id: ${{ vars.OLI_ARGO_SYNC_CLIENT_ID }}
+          private-key: ${{ secrets.OLI_ARGO_SYNC_PRIVATE_KEY }}
+        continue-on-error: true
+
+      - name: Checkout plugin
+        uses: actions/checkout@v4
+
+      - name: Checkout ocn-node-v2 (compileOnly / includeBuild)
+        uses: actions/checkout@v4
+        with:
+          repository: olisystems/ocn-node-v2
+          ref: ${{ github.event.inputs.node_ref || 'develop' }}
+          path: ocn-node-v2
+          token: ${{ steps.app-token.outputs.token || secrets.OCN_NODE_READ_TOKEN || github.token }}
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build plugin JAR
+        env:
+          OCN_NODE_REPO: ${{ github.workspace }}/ocn-node-v2
+        run: ./gradlew --no-daemon clean jar
+
+      - name: Resolve JAR path
+        id: jar
+        run: |
+          jar="$(ls -1 build/libs/ocn-node-edx-plugin*.jar | grep -v plain | head -n1)"
+          test -n "$jar"
+          echo "jar_path=$jar" >> "$GITHUB_OUTPUT"
+          echo "jar_name=ocn-node-edx-plugin.jar" >> "$GITHUB_OUTPUT"
+          ls -lh "$jar"
+
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: edx-plugin-jar
+          path: ${{ steps.jar.outputs.jar_path }}
+          if-no-files-found: error
+          retention-days: 14
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    env:
+      # Override per GitHub Environment if needed via vars:
+      #   OCN_NODE_NAMESPACE, OCN_NODE_DEPLOYMENT, OCN_NODE_PLUGINS_PATH
+      TARGET_ENV: ${{ github.event.inputs.environment || 'dev' }}
+    steps:
+      - name: Resolve cluster targets
+        id: target
+        run: |
+          case "${TARGET_ENV}" in
+            dev)
+              echo "namespace=${OCN_NODE_NAMESPACE:-oli-banula}" >> "$GITHUB_OUTPUT"
+              echo "deployment=${OCN_NODE_DEPLOYMENT:-ocn-node-v2-dev}" >> "$GITHUB_OUTPUT"
+              ;;
+            int)
+              echo "namespace=${OCN_NODE_NAMESPACE:-oli-banula}" >> "$GITHUB_OUTPUT"
+              echo "deployment=${OCN_NODE_DEPLOYMENT:-ocn-node-v2-int}" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unknown environment: ${TARGET_ENV}" >&2
+              exit 1
+              ;;
+          esac
+          echo "plugins_path=${OCN_NODE_PLUGINS_PATH:-/app/plugins}" >> "$GITHUB_OUTPUT"
+          echo "jar_name=ocn-node-edx-plugin.jar" >> "$GITHUB_OUTPUT"
+        env:
+          OCN_NODE_NAMESPACE: ${{ vars.OCN_NODE_NAMESPACE }}
+          OCN_NODE_DEPLOYMENT: ${{ vars.OCN_NODE_DEPLOYMENT }}
+          OCN_NODE_PLUGINS_PATH: ${{ vars.OCN_NODE_PLUGINS_PATH }}
+
+      - name: Download JAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: edx-plugin-jar
+          path: dist
+
+      - name: Connect to VPN
+        env:
+          VPN_CONFIG: ${{ secrets.VPN_CONFIG }}
+          VPN_PASS: ${{ secrets.VPN_PASS }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openvpn
+          printf '%s' "$VPN_CONFIG" > vpn.conf
+          printf '%s' "$VPN_PASS" > .vpn_pass
+          sudo openvpn --config vpn.conf --askpass .vpn_pass --log ovpn.log --daemon
+          for attempt in $(seq 1 30); do
+            if sudo grep -q "Initialization Sequence Completed" ovpn.log 2>/dev/null; then
+              echo "VPN connection established"
+              break
+            fi
+            sleep 2
+          done
+          if ! sudo grep -q "Initialization Sequence Completed" ovpn.log 2>/dev/null; then
+            echo "VPN failed to establish within timeout"
+            sudo tail -n 100 ovpn.log || true
+            exit 1
+          fi
+          rm -f vpn.conf .vpn_pass
+
+      - name: Configure kubectl
+        env:
+          KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG }}
+        run: |
+          printf '%s' "$KUBECONFIG_CONTENT" > "$RUNNER_TEMP/kubeconfig.yaml"
+          chmod 600 "$RUNNER_TEMP/kubeconfig.yaml"
+          echo "KUBECONFIG=$RUNNER_TEMP/kubeconfig.yaml" >> "$GITHUB_ENV"
+
+      - name: Copy JAR into node pod plugins mount
+        env:
+          NAMESPACE: ${{ steps.target.outputs.namespace }}
+          DEPLOYMENT: ${{ steps.target.outputs.deployment }}
+          PLUGINS_PATH: ${{ steps.target.outputs.plugins_path }}
+          JAR_NAME: ${{ steps.target.outputs.jar_name }}
+        run: |
+          set -euo pipefail
+          src="$(ls -1 dist/ocn-node-edx-plugin*.jar | grep -v plain | head -n1)"
+          test -f "$src"
+
+          echo "Waiting for deployment/${DEPLOYMENT} to have a Ready pod..."
+          kubectl -n "$NAMESPACE" rollout status "deployment/${DEPLOYMENT}" --timeout=180s
+
+          pod="$(kubectl -n "$NAMESPACE" get pods \
+            -l "app.kubernetes.io/instance=${DEPLOYMENT}" \
+            --field-selector=status.phase=Running \
+            -o jsonpath='{.items[0].metadata.name}')"
+          if [ -z "$pod" ]; then
+            # fallback: pick any pod owned by the deployment
+            pod="$(kubectl -n "$NAMESPACE" get pods \
+              --selector="app.kubernetes.io/instance=${DEPLOYMENT}" \
+              -o jsonpath='{.items[0].metadata.name}')"
+          fi
+          test -n "$pod"
+          echo "Using pod: $pod"
+
+          # Ensure mount dir exists (PVC may be empty on first deploy)
+          kubectl -n "$NAMESPACE" exec "$pod" -- \
+            sh -c "mkdir -p '${PLUGINS_PATH}' && ls -la '${PLUGINS_PATH}'"
+
+          # Copy via the running pod so ReadWriteOnce PVCs work without a second mount
+          kubectl -n "$NAMESPACE" cp "$src" "${pod}:${PLUGINS_PATH}/${JAR_NAME}"
+
+          kubectl -n "$NAMESPACE" exec "$pod" -- \
+            sh -c "ls -la '${PLUGINS_PATH}' && test -f '${PLUGINS_PATH}/${JAR_NAME}'"
+
+          echo "Copied ${JAR_NAME} → ${pod}:${PLUGINS_PATH}/${JAR_NAME}"
+
+      - name: Restart OCN node to load plugin
+        if: ${{ github.event_name == 'push' || github.event.inputs.restart_node == 'true' }}
+        env:
+          NAMESPACE: ${{ steps.target.outputs.namespace }}
+          DEPLOYMENT: ${{ steps.target.outputs.deployment }}
+        run: |
+          kubectl -n "$NAMESPACE" rollout restart "deployment/${DEPLOYMENT}"
+          kubectl -n "$NAMESPACE" rollout status "deployment/${DEPLOYMENT}" --timeout=300s
+          echo "Node restarted; plugin will load from ${{ steps.target.outputs.plugins_path }}"
