@@ -1,0 +1,71 @@
+{
+  "country_code": "DE",
+  "party_id": "CPO",
+  "id": "94864128-50eb-46c6-bd9f-f4323cd4c057",
+  "start_date_time": "2025-05-21T11:33:27.538Z",
+  "end_date_time": "2025-05-21T13:03:27.538Z",
+  "session_id": "SESSION-001",
+  "cdr_token": {
+    "uid": "MOCK12345",
+    "type": "RFID",
+    "contract_id": "DE-EMS-C1234567",
+    "country_code": "DE",
+    "party_id": "EMS"
+  },
+  "auth_method": "AUTH_REQUEST",
+  "cdr_location": {
+    "id": "loc-001",
+    "name": "Example Charging Site",
+    "address": "Example Street 1",
+    "city": "Berlin",
+    "postal_code": "10115",
+    "country": "DEU",
+    "coordinates": {
+      "latitude": "52.520008",
+      "longitude": "13.404954"
+    },
+    "evse_uid": "1",
+    "evse_id": "DE*CPO*E1",
+    "connector_id": "1",
+    "connector_standard": "IEC_62196_T2",
+    "connector_format": "SOCKET",
+    "connector_power_type": "AC_3_PHASE"
+  },
+  "currency": "EUR",
+  "charging_periods": [
+    {
+      "start_date_time": "2025-05-21T11:33:27.538Z",
+      "dimensions": [{ "type": "ENERGY", "volume": "0.506" }]
+    },
+    {
+      "start_date_time": "2025-05-21T11:48:27.538Z",
+      "dimensions": [{ "type": "ENERGY", "volume": "0.507" }]
+    },
+    {
+      "start_date_time": "2025-05-21T12:03:27.538Z",
+      "dimensions": [{ "type": "ENERGY", "volume": "0.505" }]
+    },
+    {
+      "start_date_time": "2025-05-21T12:18:27.538Z",
+      "dimensions": [{ "type": "ENERGY", "volume": "0.504" }]
+    },
+    {
+      "start_date_time": "2025-05-21T12:33:27.538Z",
+      "dimensions": [{ "type": "ENERGY", "volume": "0.506" }]
+    },
+    {
+      "start_date_time": "2025-05-21T12:48:27.538Z",
+      "dimensions": [{ "type": "ENERGY", "volume": "0.507" }]
+    }
+  ],
+  "total_cost": {
+    "excl_vat": 0.0,
+    "incl_vat": 0.0
+  },
+  "total_energy": "3.035",
+  "total_time": 1.5,
+  "total_parking_time": 0.0,
+  "credit": false,
+  "home_charing_compensation": false,
+  "last_updated": "2025-05-21T13:03:27.538Z"
+}

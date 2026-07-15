@@ -16,5 +16,7 @@
 
 package edx.connector.cdrservice;
 
-public record EnergyDto(Double totalKWh) {
+public record EnergyDto(
+    Double totalKWh
+) {
 }

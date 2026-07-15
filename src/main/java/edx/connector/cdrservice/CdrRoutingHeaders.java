@@ -16,9 +16,8 @@
 
 package edx.connector.cdrservice;
 
-public record CdrIngestResponseDto(
-    boolean success,
-    String extractionStatus,
-    String rawRecordId
+public record CdrRoutingHeaders(
+    String source,
+    String target
 ) {
 }

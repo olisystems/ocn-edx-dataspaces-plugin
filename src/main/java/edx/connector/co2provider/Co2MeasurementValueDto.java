@@ -12,13 +12,14 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
-*/
+ */
 
-package edx.connector.cdrservice;
+package edx.connector.co2provider;
 
-public record CdrIngestResponseDto(
-    boolean success,
-    String extractionStatus,
-    String rawRecordId
+public record Co2MeasurementValueDto(
+    String timestamp,
+    String calculatedAt,
+    double value,
+    String valueStatus
 ) {
 }

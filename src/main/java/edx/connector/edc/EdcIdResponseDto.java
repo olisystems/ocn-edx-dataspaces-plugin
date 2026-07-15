@@ -14,11 +14,12 @@
     limitations under the License.
 */
 
-package edx.connector.cdrservice;
+package edx.connector.edc;
 
-public record CdrIngestResponseDto(
-    boolean success,
-    String extractionStatus,
-    String rawRecordId
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+public record EdcIdResponseDto(
+    @JsonProperty("@id") String id,
+    Long createdAt
 ) {
 }

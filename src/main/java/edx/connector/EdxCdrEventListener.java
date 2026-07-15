@@ -12,13 +12,25 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
-*/
+ */
 
-package edx.connector.cdrservice;
+package edx.connector;
 
-public record CdrIngestResponseDto(
-    boolean success,
-    String extractionStatus,
-    String rawRecordId
-) {
+import org.springframework.context.event.EventListener;
+import org.springframework.stereotype.Component;
+import snc.openchargingnetwork.node.plugins.core.OcpiObjectEvent;
+
+@Component
+public class EdxCdrEventListener {
+
+    private final CdrForwarder forwarder;
+
+    public EdxCdrEventListener(CdrForwarder forwarder) {
+        this.forwarder = forwarder;
+    }
+
+    @EventListener
+    public void onOcpiObjectEvent(OcpiObjectEvent event) {
+        forwarder.forwardIfCdr(event);
+    }
 }

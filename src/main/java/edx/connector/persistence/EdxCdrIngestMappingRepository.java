@@ -12,13 +12,20 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
-*/
+ */
 
-package edx.connector.cdrservice;
+package edx.connector.persistence;
 
-public record CdrIngestResponseDto(
-    boolean success,
-    String extractionStatus,
-    String rawRecordId
-) {
+import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface EdxCdrIngestMappingRepository extends JpaRepository<EdxCdrIngestMapping, Long> {
+
+    Optional<EdxCdrIngestMapping> findByCountryCodeAndPartyIdAndCdrId(
+        String countryCode,
+        String partyId,
+        String cdrId
+    );
+
+    Optional<EdxCdrIngestMapping> findByServiceId(String serviceId);
 }

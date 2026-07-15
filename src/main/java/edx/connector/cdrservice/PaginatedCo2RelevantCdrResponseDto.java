@@ -16,9 +16,15 @@
 
 package edx.connector.cdrservice;
 
-public record CdrIngestResponseDto(
-    boolean success,
-    String extractionStatus,
-    String rawRecordId
+import java.util.List;
+
+public record PaginatedCo2RelevantCdrResponseDto(
+    List<Co2RelevantCdrResponseDto> items,
+    int total,
+    int page,
+    int limit,
+    int totalPages,
+    boolean hasNextPage,
+    boolean hasPreviousPage
 ) {
 }

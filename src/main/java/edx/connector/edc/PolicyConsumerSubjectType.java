@@ -14,11 +14,9 @@
     limitations under the License.
 */
 
-package edx.connector.cdrservice;
+package edx.connector.edc;
 
-public record CdrIngestResponseDto(
-    boolean success,
-    String extractionStatus,
-    String rawRecordId
-) {
+public enum PolicyConsumerSubjectType {
+    MARKET_PARTNER,
+    DID
 }

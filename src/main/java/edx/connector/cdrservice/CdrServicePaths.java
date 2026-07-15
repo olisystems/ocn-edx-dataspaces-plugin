@@ -16,9 +16,13 @@
 
 package edx.connector.cdrservice;
 
-public record CdrIngestResponseDto(
-    boolean success,
-    String extractionStatus,
-    String rawRecordId
-) {
+public final class CdrServicePaths {
+
+    public static final String API_V1 = "/api/v1";
+    static final String CDR_INGEST = API_V1 + "/cdr-ingest";
+    static final String RAW_CDR = API_V1 + "/raw-cdr";
+    static final String CO2_RELEVANT_CDR = API_V1 + "/co2-relevant-cdr";
+
+    private CdrServicePaths() {
+    }
 }

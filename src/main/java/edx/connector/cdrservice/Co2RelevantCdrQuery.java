@@ -16,9 +16,14 @@
 
 package edx.connector.cdrservice;
 
-public record CdrIngestResponseDto(
-    boolean success,
-    String extractionStatus,
-    String rawRecordId
+public record Co2RelevantCdrQuery(
+    Integer page,
+    Integer limit,
+    String sortBy,
+    String sortOrder
 ) {
+
+    public static Co2RelevantCdrQuery defaults() {
+        return new Co2RelevantCdrQuery(null, null, null, null);
+    }
 }

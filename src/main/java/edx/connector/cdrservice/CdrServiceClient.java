@@ -31,6 +31,8 @@ import java.util.List;
 public final class CdrServiceClient {
 
     public static final String API_KEY_HEADER = "x-api-key";
+    public static final String SOURCE_HEADER = "x-source";
+    public static final String TARGET_HEADER = "x-target";
 
     private final URI baseUri;
     private final String apiKey;
@@ -50,11 +52,11 @@ public final class CdrServiceClient {
         this.client = client;
     }
 
-    public CdrIngestResponseDto ingestCdr(Object rawCdr) {
+    public CdrIngestResponseDto ingestCdr(CdrIngestRequestDto ingestRequest) {
         try {
-            HttpRequest request = requestBuilder("/api/cdr-ingest")
+            HttpRequest request = requestBuilder(CdrServicePaths.CDR_INGEST)
                 .header("content-type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(rawCdr)))
+                .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(ingestRequest)))
                 .build();
             return send(request, CdrIngestResponseDto.class);
         } catch (IOException e) {
@@ -63,33 +65,45 @@ public final class CdrServiceClient {
     }
 
     public List<RawCdrDto> getAllRawCdrs() {
-        HttpRequest request = requestBuilder("/api/raw-cdr").GET().build();
+        HttpRequest request = requestBuilder(CdrServicePaths.RAW_CDR).GET().build();
         return send(request, new TypeReference<>() {});
     }
 
     public RawCdrDto getRawCdrById(String id) {
-        HttpRequest request = requestBuilder("/api/raw-cdr/" + pathSegment(id)).GET().build();
+        HttpRequest request = requestBuilder(CdrServicePaths.RAW_CDR + "/" + pathSegment(id)).GET().build();
         return send(request, RawCdrDto.class);
     }
 
     public void deleteRawCdrById(String id) {
-        HttpRequest request = requestBuilder("/api/raw-cdr/" + pathSegment(id)).DELETE().build();
+        HttpRequest request = requestBuilder(CdrServicePaths.RAW_CDR + "/" + pathSegment(id)).DELETE().build();
         send(request);
     }
 
-    public List<Co2RelevantCdrResponseDto> getAllCo2RelevantCdrs() {
-        HttpRequest request = requestBuilder("/api/co2-relevant-cdr").GET().build();
-        return send(request, new TypeReference<>() {});
+    public PaginatedCo2RelevantCdrResponseDto getAllCo2RelevantCdrs(
+        Co2RelevantCdrQuery query,
+        CdrRoutingHeaders routing
+    ) {
+        HttpRequest request = withRoutingHeaders(
+            requestBuilder(CdrServicePaths.CO2_RELEVANT_CDR + co2RelevantQuery(query)).GET(),
+            routing
+        ).build();
+        return send(request, PaginatedCo2RelevantCdrResponseDto.class);
     }
 
-    public Co2RelevantCdrResponseDto getCo2RelevantCdrById(String id) {
-        HttpRequest request = requestBuilder("/api/co2-relevant-cdr/" + pathSegment(id)).GET().build();
+    public Co2RelevantCdrResponseDto getCo2RelevantCdrById(String id, CdrRoutingHeaders routing) {
+        HttpRequest request = withRoutingHeaders(
+            requestBuilder(CdrServicePaths.CO2_RELEVANT_CDR + "/" + pathSegment(id)).GET(),
+            routing
+        ).build();
         return send(request, Co2RelevantCdrResponseDto.class);
     }
 
-    public Co2RelevantCdrResponseDto getCo2RelevantCdrByRawRecordId(String rawRecordId) {
-        HttpRequest request = requestBuilder("/api/co2-relevant-cdr/raw/" + pathSegment(rawRecordId)).GET().build();
-        return send(request, Co2RelevantCdrResponseDto.class);
+    public RawCdrDto getRawCdrByCo2RelevantCdrId(String id, CdrRoutingHeaders routing) {
+        HttpRequest request = withRoutingHeaders(
+            requestBuilder(CdrServicePaths.CO2_RELEVANT_CDR + "/" + pathSegment(id) + "/raw").GET(),
+            routing
+        ).build();
+        return send(request, RawCdrDto.class);
     }
 
     private HttpRequest.Builder requestBuilder(String apiPath) {
@@ -100,6 +114,44 @@ public final class CdrServiceClient {
             builder.header(API_KEY_HEADER, apiKey);
         }
         return builder;
+    }
+
+    private HttpRequest.Builder withRoutingHeaders(HttpRequest.Builder builder, CdrRoutingHeaders routing) {
+        if (routing == null) {
+            return builder;
+        }
+        if (routing.source() != null && !routing.source().isBlank()) {
+            builder.header(SOURCE_HEADER, routing.source());
+        }
+        if (routing.target() != null && !routing.target().isBlank()) {
+            builder.header(TARGET_HEADER, routing.target());
+        }
+        return builder;
+    }
+
+    private String co2RelevantQuery(Co2RelevantCdrQuery query) {
+        if (query == null) {
+            return "";
+        }
+        StringBuilder builder = new StringBuilder();
+        appendQueryParam(builder, "page", query.page());
+        appendQueryParam(builder, "limit", query.limit());
+        appendQueryParam(builder, "sortBy", query.sortBy());
+        appendQueryParam(builder, "sortOrder", query.sortOrder());
+        return builder.toString();
+    }
+
+    private void appendQueryParam(StringBuilder builder, String name, Object value) {
+        if (value == null) {
+            return;
+        }
+        if (value instanceof String stringValue && stringValue.isBlank()) {
+            return;
+        }
+        builder.append(builder.length() == 0 ? "?" : "&");
+        builder.append(name);
+        builder.append("=");
+        builder.append(URLEncoder.encode(String.valueOf(value), StandardCharsets.UTF_8));
     }
 
     private URI endpoint(String apiPath) {

@@ -16,9 +16,14 @@
 
 package edx.connector.cdrservice;
 
-public record CdrIngestResponseDto(
-    boolean success,
-    String extractionStatus,
-    String rawRecordId
+import java.util.Map;
+
+public record ResolvedIngestedCdrDto(
+    String countryCode,
+    String partyId,
+    String cdrId,
+    String serviceId,
+    String receivedAt,
+    Map<String, Object> cdr
 ) {
 }

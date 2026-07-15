@@ -19,7 +19,7 @@ package edx.connector.cdrservice;
 import java.util.List;
 
 public record ExtractionDto(
-    ExtractionStatus status,
+    String status,
     List<String> warnings
 ) {
 }
