@@ -22,7 +22,6 @@ import edx.connector.cdrservice.CdrServiceClient;
 import edx.connector.edc.CpoAssetProvisioningService;
 import edx.connector.persistence.CdrIngestMappingStore;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -61,7 +60,8 @@ public final class CdrForwarder {
                 thread.setDaemon(true);
                 return thread;
             },
-            new ThreadPoolExecutor.AbortPolicy()
+            // Backpressure: run on the caller when the queue is full instead of dropping CDRs.
+            new ThreadPoolExecutor.CallerRunsPolicy()
         );
     }
 
@@ -80,16 +80,7 @@ public final class CdrForwarder {
             );
             return;
         }
-        try {
-            executor.submit(() -> post(event));
-        } catch (RejectedExecutionException e) {
-            CDR cdr = (CDR) event.getPayload();
-            LOGGER.log(
-                Level.WARNING,
-                "EDX CDR forward queue full (capacity=" + FORWARD_QUEUE_CAPACITY + "); dropping CDR " + cdr.getId(),
-                e
-            );
-        }
+        executor.execute(() -> post(event));
     }
 
     private void post(OcpiObjectEvent event) {

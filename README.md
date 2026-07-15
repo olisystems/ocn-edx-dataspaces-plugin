@@ -34,23 +34,28 @@ The node loads JARs from `-Dloader.path=…` (default `/app/plugins` in Docker).
 
 Upload the JAR to the node's OTC OBS bucket (S3-compatible), then restart the node so the entrypoint re-fetches plugins into `/app/plugins`.
 
-The object key must match the plugin id in `OCN_PLUGINS` with a `.jar` suffix. Int currently uses `edx-v1` (`ocn-node-v2` `values.int.yaml`); use the same id for the OBS key and `OCN_PLUGINS`.
+No plugins PVC or volume mount is required: the `ocn-node-v2` Docker entrypoint downloads each id in `OCN_PLUGINS` from OBS into `/app/plugins` before the JVM starts (see `ocn-node-v2` `PLUGINS.md`). Plugin loading is configured in the **node** Helm chart (`ocn-node-v2`), not in this plugin repo. Int already sets this in `values.int.yaml` (`OCN_PLUGINS=edx-v1` + OTC credentials). Dev / other envs must have the same env vars before the steps below will load a JAR.
 
-Prerequisites (provided by the `ocn-node-v2` Helm chart / namespace secrets, not this repo):
+The object key must match the plugin id in `OCN_PLUGINS` with a `.jar` suffix.
+
+Prerequisites (in `ocn-node-v2` Helm / namespace secrets):
 
 - `OCN_PLUGINS` set to the plugin id(s) to fetch (e.g. `edx-v1`)
-- `OTC_BUCKET_NAME` (e.g. `ocn-node-plugins`) plus Secret `otc-obs-credentials` (`access_key_id`, `secret_access_key`)
-- Docker entrypoint that downloads each `OCN_PLUGINS` id into `/app/plugins` before JVM start (see `ocn-node-v2` `PLUGINS.md`)
+- `OTC_BUCKET_NAME` plus Secret `otc-obs-credentials` (`access_key_id`, `secret_access_key`)
+- Optional: `OTC_ENDPOINT_URL` (default `https://obs.eu-de.otc.t-systems.com`)
 
 1. Build the JAR locally:
    ```bash
    ./gradlew jar
    ```
-2. Upload to OBS using the same plugin id as `OCN_PLUGINS`:
+2. Upload to the same bucket the node uses (`OTC_BUCKET_NAME`), with the same plugin id as `OCN_PLUGINS`:
    ```bash
+   # use the bucket/endpoint from the target deployment
+   export OTC_BUCKET_NAME=ocn-node-plugins
+   export OTC_ENDPOINT_URL=https://obs.eu-de.otc.t-systems.com
    aws s3 cp build/libs/ocn-node-edx-plugin*.jar \
-     "s3://ocn-node-plugins/edx-v1.jar" \
-     --endpoint-url https://obs.eu-de.otc.t-systems.com
+     "s3://${OTC_BUCKET_NAME}/edx-v1.jar" \
+     --endpoint-url "$OTC_ENDPOINT_URL"
    ```
 3. Confirm the target env sets `OCN_PLUGINS=edx-v1` (and OBS credentials as above).
 4. Rollout-restart the concrete node deployment so the entrypoint pulls the new JAR:

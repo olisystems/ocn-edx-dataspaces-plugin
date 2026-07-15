@@ -19,19 +19,27 @@ package edx.connector.persistence;
 import java.util.Optional;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 public class JpaCdrIngestMappingStore implements CdrIngestMappingStore {
 
     private final EdxCdrIngestMappingRepository repository;
+    private final TransactionTemplate writeTx;
 
-    public JpaCdrIngestMappingStore(EdxCdrIngestMappingRepository repository) {
+    public JpaCdrIngestMappingStore(
+        EdxCdrIngestMappingRepository repository,
+        PlatformTransactionManager transactionManager
+    ) {
         this.repository = repository;
+        this.writeTx = new TransactionTemplate(transactionManager);
+        this.writeTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
     @Override
-    @Transactional
     public void recordSuccessfulIngest(String countryCode, String partyId, String cdrId, String serviceId) {
         if (isBlank(countryCode) || isBlank(partyId) || isBlank(cdrId) || isBlank(serviceId)) {
             throw new IllegalArgumentException("countryCode, partyId, cdrId, and serviceId must not be blank");
@@ -42,10 +50,21 @@ public class JpaCdrIngestMappingStore implements CdrIngestMappingStore {
         String normalizedServiceId = normalizeServiceId(serviceId);
 
         try {
-            upsert(normalizedCountry, normalizedParty, normalizedCdrId, normalizedServiceId);
+            writeTx.executeWithoutResult(status -> upsert(
+                normalizedCountry,
+                normalizedParty,
+                normalizedCdrId,
+                normalizedServiceId
+            ));
         } catch (DataIntegrityViolationException e) {
-            // Concurrent insert raced on the unique constraint; reload and update.
-            upsert(normalizedCountry, normalizedParty, normalizedCdrId, normalizedServiceId);
+            // Concurrent insert raced on the unique constraint; retry in a fresh transaction
+            // because the failed attempt marked its TX rollback-only.
+            writeTx.executeWithoutResult(status -> upsert(
+                normalizedCountry,
+                normalizedParty,
+                normalizedCdrId,
+                normalizedServiceId
+            ));
         }
     }
 
