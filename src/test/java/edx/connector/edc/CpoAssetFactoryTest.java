@@ -17,6 +17,7 @@
 package edx.connector.edc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -39,7 +40,7 @@ class CpoAssetFactoryTest {
         Map<String, Object> dataAddress = (Map<String, Object>) asset.get("dataAddress");
         assertEquals("https://cdr.example.com/api/v1/co2-relevant-cdr", dataAddress.get("baseUrl"));
         assertEquals("DE-CPO", dataAddress.get("header:x-source"));
-        assertTrue(!dataAddress.containsKey("header:x-target"));
+        assertFalse(dataAddress.containsKey("header:x-target"));
         assertEquals("secret", dataAddress.get("authCode"));
     }
 

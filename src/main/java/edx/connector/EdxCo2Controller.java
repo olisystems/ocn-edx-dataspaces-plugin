@@ -31,7 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("${ocn.node.apiPrefix}/plugin/edx")
 @ConditionalOnExpression("!'${edx.co2.provider.publicApiUrl:}'.trim().isEmpty()")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "${edx.connector.allowed-origins:*}")
 public class EdxCo2Controller {
 
     private final Co2ProviderClient co2ProviderClient;

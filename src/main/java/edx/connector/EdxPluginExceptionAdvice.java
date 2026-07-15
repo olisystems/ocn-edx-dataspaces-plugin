@@ -29,36 +29,54 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class EdxPluginExceptionAdvice {
 
+    public record ErrorResponse(String error) {
+    }
+
     @ExceptionHandler(CdrServiceException.class)
-    public ResponseEntity<String> handleCdrServiceException(CdrServiceException exception) {
+    public ResponseEntity<?> handleCdrServiceException(CdrServiceException exception) {
         return upstreamError(exception.statusCode(), exception.responseBody(), exception.getMessage());
     }
 
     @ExceptionHandler(Co2ProviderException.class)
-    public ResponseEntity<String> handleCo2ProviderException(Co2ProviderException exception) {
+    public ResponseEntity<?> handleCo2ProviderException(Co2ProviderException exception) {
         return upstreamError(exception.statusCode(), exception.responseBody(), exception.getMessage());
     }
 
     @ExceptionHandler(EdcManagementException.class)
-    public ResponseEntity<String> handleEdcManagementException(EdcManagementException exception) {
+    public ResponseEntity<?> handleEdcManagementException(EdcManagementException exception) {
         return upstreamError(exception.statusCode(), exception.responseBody(), exception.getMessage());
     }
 
     @ExceptionHandler(CpoPolicyAuthorizationException.class)
-    public ResponseEntity<String> handleCpoPolicyAuthorizationException(CpoPolicyAuthorizationException exception) {
-        return ResponseEntity.status(401).contentType(MediaType.APPLICATION_JSON).body(exception.getMessage());
+    public ResponseEntity<ErrorResponse> handleCpoPolicyAuthorizationException(
+        CpoPolicyAuthorizationException exception
+    ) {
+        return ResponseEntity.status(401)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new ErrorResponse(exception.getMessage()));
     }
 
     @ExceptionHandler(CpoAssetNotFoundException.class)
-    public ResponseEntity<String> handleCpoAssetNotFoundException(CpoAssetNotFoundException exception) {
-        return ResponseEntity.status(404).contentType(MediaType.APPLICATION_JSON).body(exception.getMessage());
+    public ResponseEntity<ErrorResponse> handleCpoAssetNotFoundException(CpoAssetNotFoundException exception) {
+        return ResponseEntity.status(404)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new ErrorResponse(exception.getMessage()));
     }
 
-    private static ResponseEntity<String> upstreamError(int statusCode, String responseBody, String message) {
+    private static ResponseEntity<?> upstreamError(int statusCode, String responseBody, String message) {
         int status = statusCode > 0 ? statusCode : 502;
-        String body = responseBody == null ? message : responseBody;
+        if (responseBody != null && looksLikeJson(responseBody)) {
+            return ResponseEntity.status(status)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(responseBody);
+        }
         return ResponseEntity.status(status)
             .contentType(MediaType.APPLICATION_JSON)
-            .body(body);
+            .body(new ErrorResponse(responseBody == null ? message : responseBody));
+    }
+
+    private static boolean looksLikeJson(String body) {
+        String trimmed = body.trim();
+        return trimmed.startsWith("{") || trimmed.startsWith("[");
     }
 }

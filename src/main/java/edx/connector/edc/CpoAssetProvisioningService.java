@@ -48,15 +48,19 @@ public final class CpoAssetProvisioningService {
         this.settings = settings;
     }
 
-    public void ensureForCpo(String countryCode, String partyId) {
+    /**
+     * @return {@code true} when the CPO mapping already exists or was provisioned successfully;
+     *         {@code false} when provisioning failed and the caller may retry or alert
+     */
+    public boolean ensureForCpo(String countryCode, String partyId) {
         if (!hasText(countryCode) || !hasText(partyId)) {
-            return;
+            return false;
         }
         String normalizedCountry = JpaCpoAssetMappingStore.normalizeCountryCode(countryCode);
         String normalizedParty = JpaCpoAssetMappingStore.normalizePartyId(partyId);
         Optional<EdxCpoAssetMapping> existing = mappingStore.find(normalizedCountry, normalizedParty);
         if (existing.isPresent()) {
-            return;
+            return true;
         }
 
         String sourceKey = CpoAssetIds.sourceKey(normalizedCountry, normalizedParty);
@@ -124,12 +128,14 @@ public final class CpoAssetProvisioningService {
                     + normalizedCountry + "/" + normalizedParty
                     + " -> assetId=" + assetId
             );
+            return true;
         } catch (Exception e) {
             LOGGER.log(
                 Level.WARNING,
                 "Failed to provision EDX dataspace asset for CPO " + normalizedCountry + "/" + normalizedParty,
                 e
             );
+            return false;
         }
     }
 

@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("${ocn.node.apiPrefix}/plugin/edx/cdrs/mapping")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "${edx.connector.allowed-origins:*}")
 public class EdxCdrIngestMappingController {
 
     private final CdrIngestMappingStore mappingStore;

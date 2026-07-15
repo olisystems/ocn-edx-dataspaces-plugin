@@ -31,7 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("${ocn.node.apiPrefix}/plugin/edx/cdrs")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "${edx.connector.allowed-origins:*}")
 public class EdxIngestedCdrController {
 
     private final CdrServiceClient cdrServiceClient;

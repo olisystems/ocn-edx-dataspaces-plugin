@@ -51,10 +51,16 @@ public class JpaCpoAssetMappingStore implements CpoAssetMappingStore {
     }
 
     public static String normalizeCountryCode(String countryCode) {
+        if (!hasText(countryCode)) {
+            throw new IllegalArgumentException("countryCode must not be blank");
+        }
         return countryCode.trim().toUpperCase();
     }
 
     public static String normalizePartyId(String partyId) {
+        if (!hasText(partyId)) {
+            throw new IllegalArgumentException("partyId must not be blank");
+        }
         return partyId.trim().toUpperCase();
     }
 

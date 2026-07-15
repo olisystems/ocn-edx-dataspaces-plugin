@@ -41,9 +41,16 @@ public final class IngestedCdrLookup {
             if (mapped.isPresent()) {
                 return mapped;
             }
+            // Keep the id fallback tenant-scoped when party context was provided.
+            return latestRawMatching(
+                cdrServiceClient.getAllRawCdrs(),
+                cdrId.trim(),
+                countryCode.trim(),
+                partyId.trim()
+            ).flatMap(this::toResolvedFromRaw);
         }
         if (hasText(cdrId)) {
-            return latestRawMatching(cdrServiceClient.getAllRawCdrs(), cdrId.trim())
+            return latestRawMatching(cdrServiceClient.getAllRawCdrs(), cdrId.trim(), null, null)
                 .flatMap(this::toResolvedFromRaw);
         }
         return resolveLatest();
@@ -86,8 +93,21 @@ public final class IngestedCdrLookup {
     }
 
     static Optional<RawCdrDto> latestRawMatching(List<RawCdrDto> records, String cdrId) {
+        return latestRawMatching(records, cdrId, null, null);
+    }
+
+    static Optional<RawCdrDto> latestRawMatching(
+        List<RawCdrDto> records,
+        String cdrId,
+        String countryCode,
+        String partyId
+    ) {
+        boolean scoped = hasText(countryCode) && hasText(partyId);
+        String normalizedCountry = scoped ? countryCode.trim() : null;
+        String normalizedParty = scoped ? partyId.trim() : null;
         return records.stream()
             .filter(record -> cdrId.equalsIgnoreCase(ocpiIdFromRaw(record)))
+            .filter(record -> !scoped || matchesTenant(record, normalizedCountry, normalizedParty))
             .max(Comparator.comparing(RawCdrDto::receivedAt, Comparator.nullsLast(String::compareTo)));
     }
 
@@ -96,6 +116,15 @@ public final class IngestedCdrLookup {
             return null;
         }
         return stringValue(raw.cdr().get("id"));
+    }
+
+    private static boolean matchesTenant(RawCdrDto raw, String countryCode, String partyId) {
+        if (raw == null || raw.cdr() == null) {
+            return false;
+        }
+        String rawCountry = stringValue(raw.cdr().get("country_code"));
+        String rawParty = stringValue(raw.cdr().get("party_id"));
+        return countryCode.equalsIgnoreCase(rawCountry) && partyId.equalsIgnoreCase(rawParty);
     }
 
     private static boolean hasText(String value) {

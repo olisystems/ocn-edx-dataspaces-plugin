@@ -21,9 +21,12 @@ import edx.connector.cdrservice.CdrIngestResponseDto;
 import edx.connector.cdrservice.CdrServiceClient;
 import edx.connector.edc.CpoAssetProvisioningService;
 import edx.connector.persistence.CdrIngestMappingStore;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.concurrent.TimeUnit;
 import snc.openchargingnetwork.node.models.ocpi.CDR;
 import snc.openchargingnetwork.node.models.ocpi.ModuleID;
 import snc.openchargingnetwork.node.plugins.core.OcpiObjectEvent;
@@ -32,11 +35,12 @@ public final class CdrForwarder {
 
     private static final Logger LOGGER = Logger.getLogger(CdrForwarder.class.getName());
     static final int OCPI_SUCCESS_STATUS_CODE = 1000;
+    static final int FORWARD_QUEUE_CAPACITY = 256;
 
     private final CdrServiceClient cdrServiceClient;
     private final CdrIngestMappingStore mappingStore;
     private final CpoAssetProvisioningService assetProvisioningService;
-    private final java.util.concurrent.ExecutorService executor;
+    private final ThreadPoolExecutor executor;
 
     public CdrForwarder(
         CdrServiceClient cdrServiceClient,
@@ -46,11 +50,19 @@ public final class CdrForwarder {
         this.cdrServiceClient = cdrServiceClient;
         this.mappingStore = mappingStore;
         this.assetProvisioningService = assetProvisioningService;
-        this.executor = java.util.concurrent.Executors.newSingleThreadExecutor(task -> {
-            Thread thread = new Thread(task, "edx-cdr-forwarder");
-            thread.setDaemon(true);
-            return thread;
-        });
+        this.executor = new ThreadPoolExecutor(
+            1,
+            1,
+            0L,
+            TimeUnit.MILLISECONDS,
+            new ArrayBlockingQueue<>(FORWARD_QUEUE_CAPACITY),
+            task -> {
+                Thread thread = new Thread(task, "edx-cdr-forwarder");
+                thread.setDaemon(true);
+                return thread;
+            },
+            new ThreadPoolExecutor.AbortPolicy()
+        );
     }
 
     public void forwardIfCdr(OcpiObjectEvent event) {
@@ -68,7 +80,16 @@ public final class CdrForwarder {
             );
             return;
         }
-        executor.submit(() -> post(event));
+        try {
+            executor.submit(() -> post(event));
+        } catch (RejectedExecutionException e) {
+            CDR cdr = (CDR) event.getPayload();
+            LOGGER.log(
+                Level.WARNING,
+                "EDX CDR forward queue full (capacity=" + FORWARD_QUEUE_CAPACITY + "); dropping CDR " + cdr.getId(),
+                e
+            );
+        }
     }
 
     private void post(OcpiObjectEvent event) {
@@ -123,7 +144,12 @@ public final class CdrForwarder {
         if (assetProvisioningService == null) {
             return;
         }
-        assetProvisioningService.ensureForCpo(countryCode, partyId);
+        if (!assetProvisioningService.ensureForCpo(countryCode, partyId)) {
+            LOGGER.warning(
+                "EDX dataspace asset provisioning did not complete for CPO "
+                    + countryCode + "/" + partyId
+            );
+        }
     }
 
     public void shutdown() {

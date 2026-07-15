@@ -17,6 +17,7 @@
 package edx.connector.persistence;
 
 import java.util.Optional;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,11 +33,28 @@ public class JpaCdrIngestMappingStore implements CdrIngestMappingStore {
     @Override
     @Transactional
     public void recordSuccessfulIngest(String countryCode, String partyId, String cdrId, String serviceId) {
+        if (isBlank(countryCode) || isBlank(partyId) || isBlank(cdrId) || isBlank(serviceId)) {
+            throw new IllegalArgumentException("countryCode, partyId, cdrId, and serviceId must not be blank");
+        }
         String normalizedCountry = normalizeCountryCode(countryCode);
         String normalizedParty = normalizePartyId(partyId);
         String normalizedCdrId = normalizeCdrId(cdrId);
         String normalizedServiceId = normalizeServiceId(serviceId);
 
+        try {
+            upsert(normalizedCountry, normalizedParty, normalizedCdrId, normalizedServiceId);
+        } catch (DataIntegrityViolationException e) {
+            // Concurrent insert raced on the unique constraint; reload and update.
+            upsert(normalizedCountry, normalizedParty, normalizedCdrId, normalizedServiceId);
+        }
+    }
+
+    private void upsert(
+        String normalizedCountry,
+        String normalizedParty,
+        String normalizedCdrId,
+        String normalizedServiceId
+    ) {
         repository.findByCountryCodeAndPartyIdAndCdrId(normalizedCountry, normalizedParty, normalizedCdrId)
             .ifPresentOrElse(
                 existing -> {

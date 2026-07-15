@@ -27,6 +27,9 @@ public final class InMemoryCdrIngestMappingStore implements CdrIngestMappingStor
 
     @Override
     public void recordSuccessfulIngest(String countryCode, String partyId, String cdrId, String serviceId) {
+        if (isBlank(countryCode) || isBlank(partyId) || isBlank(cdrId) || isBlank(serviceId)) {
+            throw new IllegalArgumentException("countryCode, partyId, cdrId, and serviceId must not be blank");
+        }
         String country = JpaCdrIngestMappingStore.normalizeCountryCode(countryCode);
         String party = JpaCdrIngestMappingStore.normalizePartyId(partyId);
         String cdr = JpaCdrIngestMappingStore.normalizeCdrId(cdrId);
@@ -70,5 +73,9 @@ public final class InMemoryCdrIngestMappingStore implements CdrIngestMappingStor
 
     private static String ocpiKey(String countryCode, String partyId, String cdrId) {
         return countryCode + "|" + partyId + "|" + cdrId;
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }

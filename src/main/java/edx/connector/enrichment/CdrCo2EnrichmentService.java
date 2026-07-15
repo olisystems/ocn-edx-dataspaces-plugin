@@ -19,6 +19,7 @@ package edx.connector.enrichment;
 import edx.connector.cdrservice.CdrServiceClient;
 import edx.connector.cdrservice.RawCdrDto;
 import edx.connector.co2provider.CdrCo2Enricher;
+import edx.connector.co2provider.Co2EmissionDataResponseDto;
 import edx.connector.co2provider.Co2EmissionQuery;
 import edx.connector.co2provider.Co2EnrichmentDefaults;
 import edx.connector.co2provider.Co2ProviderClient;
@@ -98,11 +99,12 @@ public final class CdrCo2EnrichmentService {
                 defaults.emissionType()
             );
 
-        Map<String, Object> enrichedCdr = enricher.enrich(
-            sourceCdr,
-            co2ProviderClient.fetchEmissionData(query),
-            zone
-        );
+        Co2EmissionDataResponseDto emissions = co2ProviderClient.fetchEmissionData(query);
+        if (emissions == null) {
+            return Optional.empty();
+        }
+
+        Map<String, Object> enrichedCdr = enricher.enrich(sourceCdr, emissions, zone);
 
         return Optional.of(new EnrichedCdrDto(
             mapping.getCountryCode(),

@@ -31,7 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("${ocn.node.apiPrefix}/plugin/edx/dataspace/cpos")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "${edx.edc.management.allowed-origins:*}")
 @ConditionalOnProperty(prefix = "edx.edc.management", name = "enabled", havingValue = "true")
 public class EdxCpoAssetController {
 

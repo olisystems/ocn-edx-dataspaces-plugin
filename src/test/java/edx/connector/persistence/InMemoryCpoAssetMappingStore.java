@@ -26,11 +26,17 @@ public final class InMemoryCpoAssetMappingStore implements CpoAssetMappingStore 
 
     @Override
     public Optional<EdxCpoAssetMapping> find(String countryCode, String partyId) {
+        if (!hasText(countryCode) || !hasText(partyId)) {
+            return Optional.empty();
+        }
         return Optional.ofNullable(byKey.get(key(countryCode, partyId)));
     }
 
     @Override
     public EdxCpoAssetMapping save(EdxCpoAssetMapping mapping) {
+        if (mapping == null || !hasText(mapping.getCountryCode()) || !hasText(mapping.getPartyId())) {
+            throw new IllegalArgumentException("mapping countryCode and partyId must not be blank");
+        }
         byKey.put(key(mapping.getCountryCode(), mapping.getPartyId()), mapping);
         return mapping;
     }
@@ -45,5 +51,9 @@ public final class InMemoryCpoAssetMappingStore implements CpoAssetMappingStore 
         return JpaCpoAssetMappingStore.normalizeCountryCode(countryCode)
             + "/"
             + JpaCpoAssetMappingStore.normalizePartyId(partyId);
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 }

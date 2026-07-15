@@ -14,8 +14,10 @@ Import both files into Postman (or a compatible client):
 3. Set:
    - `cpo_token_c` — plain OCPI Token C for the CPO (dataspace folder)
    - `cdr_service_api_key` / `edc_api_key` — only if you use folders 04–05
+   - `test_did` — a DID controlled by your local EDC / identity provider (disabled by default)
+   - `cdr_service_base` — enable and set to your local CDR service before using folders 04
 4. Point `ocn_base` at your node (default `http://localhost:9999/ocn-v2`).
-5. Point `cdr_service_base` / `edc_management_base` at your deployments (placeholders use `example.com` / localhost).
+5. Point `edc_management_base` at your local EDC management API (default `http://localhost:8181/api/management`).
 
 ## Folders
 

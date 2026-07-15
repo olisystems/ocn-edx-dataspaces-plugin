@@ -59,6 +59,9 @@ public final class CpoPolicyUpdateService {
     private EdxCpoAssetMapping applyConsumers(EdxCpoAssetMapping mapping, List<PolicyConsumerSubject> consumers) {
         Map<String, Object> accessPolicy = CpoPolicyBuilder.buildPolicyDefinition(mapping.getAccessPolicyId(), consumers);
         Map<String, Object> contractPolicy = CpoPolicyBuilder.buildPolicyDefinition(mapping.getContractPolicyId(), consumers);
+        // Persist local mapping only after both EDC updates succeed so DB does not claim a
+        // consumer set that EDC never fully accepted. Partial EDC divergence (access updated,
+        // contract failed) still requires an operator retry of the same request.
         edcManagementClient.updatePolicyDefinition(accessPolicy);
         edcManagementClient.updatePolicyDefinition(contractPolicy);
         String json = serializeConsumers(consumers);

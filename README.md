@@ -34,28 +34,37 @@ The node loads JARs from `-Dloader.path=…` (default `/app/plugins` in Docker).
 
 Upload the JAR to the node's OTC OBS bucket (S3-compatible), then restart the node so the entrypoint re-fetches plugins into `/app/plugins`.
 
+The object key must match the plugin id in `OCN_PLUGINS` with a `.jar` suffix. Int currently uses `edx-v1` (`ocn-node-v2` `values.int.yaml`); use the same id for the OBS key and `OCN_PLUGINS`.
+
+Prerequisites (provided by the `ocn-node-v2` Helm chart / namespace secrets, not this repo):
+
+- `OCN_PLUGINS` set to the plugin id(s) to fetch (e.g. `edx-v1`)
+- `OTC_BUCKET_NAME` (e.g. `ocn-node-plugins`) plus Secret `otc-obs-credentials` (`access_key_id`, `secret_access_key`)
+- Docker entrypoint that downloads each `OCN_PLUGINS` id into `/app/plugins` before JVM start (see `ocn-node-v2` `PLUGINS.md`)
+
 1. Build the JAR locally:
    ```bash
    ./gradlew jar
    ```
-2. Upload to OBS as `<plugin-id>.jar` (the id listed in the node's `OCN_PLUGINS` env):
+2. Upload to OBS using the same plugin id as `OCN_PLUGINS`:
    ```bash
    aws s3 cp build/libs/ocn-node-edx-plugin*.jar \
-     "s3://ocn-node-plugins/ocn-node-edx-plugin.jar" \
+     "s3://ocn-node-plugins/edx-v1.jar" \
      --endpoint-url https://obs.eu-de.otc.t-systems.com
    ```
-3. Ensure `ocn-node-v2` helm has:
-   - Shared in `values.yaml`: `OTC_BUCKET_NAME: ocn-node-plugins` and Secret `otc-obs-credentials` (`access_key_id`, `secret_access_key`) in each namespace
-   - Per env: `OCN_PLUGINS` (e.g. `ocn-node-edx-plugin` or `edx_v1,edx_v2`)
-4. Rollout-restart the node deployment so the entrypoint pulls the new JAR:
+3. Confirm the target env sets `OCN_PLUGINS=edx-v1` (and OBS credentials as above).
+4. Rollout-restart the concrete node deployment so the entrypoint pulls the new JAR:
    ```bash
-   kubectl -n <ns> rollout restart deployment/<ocn-node-v2-*>
+   # int
+   kubectl -n <ns> rollout restart deployment/ocn-node-v2-int
+   # dev
+   kubectl -n <ns> rollout restart deployment/ocn-node-v2-dev
    ```
 
 After restart, check the node **PLUGINS** banner and:
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}\n" https://banula-dev.oli-system.com/ocn-v2/plugin/edx/cdrs
+curl -s -o /dev/null -w "%{http_code}\n" https://banula-int.oli-system.com/ocn-v2/plugin/edx/cdrs
 ```
 
 ## Configuration
@@ -82,6 +91,8 @@ Optional settings:
 |---------|----------------------|---------|
 | `edx.cdr.service.enabled` | `EDX_CDR_SERVICE_ENABLED` | `true` |
 | `edx.cdr.service.timeoutMs` | `EDX_CDR_SERVICE_TIMEOUT_MS` | `5000` |
+| `edx.connector.allowed-origins` | `EDX_CONNECTOR_ALLOWED_ORIGINS` | `*` |
+| `edx.edc.management.allowed-origins` | `EDX_EDC_MANAGEMENT_ALLOWED_ORIGINS` | `*` |
 
 ## CDR ingest id mapping
 

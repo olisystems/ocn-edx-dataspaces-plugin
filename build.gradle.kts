@@ -33,6 +33,7 @@ dependencies {
     compileOnly("org.springframework.boot:spring-boot-starter-data-jpa:3.4.5")
     compileOnly("jakarta.persistence:jakarta.persistence-api:3.1.0")
     compileOnly("org.springframework.data:spring-data-jpa:3.4.5")
+    compileOnly("org.springframework:spring-tx:6.2.6")
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
     testImplementation("snc.openchargingnetwork:node:ocn-v2") {
@@ -42,6 +43,7 @@ dependencies {
     testImplementation("com.fasterxml.jackson.core:jackson-databind:2.18.3")
     testImplementation("org.springframework:spring-context:6.2.6")
     testImplementation("org.springframework:spring-web:6.2.6")
+    testImplementation("org.springframework:spring-tx:6.2.6")
 }
 
 tasks.withType<Test> {

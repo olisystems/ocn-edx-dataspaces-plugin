@@ -98,6 +98,61 @@ class IngestedCdrLookupTest {
         }
     }
 
+    @Test
+    void resolveWithTenantDoesNotReturnOtherPartyRawMatch() throws Exception {
+        String rawBody =
+            """
+            [
+              {
+                "id": "raw-other",
+                "receivedAt": "2026-02-18T09:00:00Z",
+                "cdr": {
+                  "country_code": "DE",
+                  "party_id": "OTH",
+                  "id": "cdr-lab",
+                  "total_energy": 1.0
+                }
+              }
+            ]
+            """;
+        HttpServer server = startServer(rawBody);
+        try {
+            IngestedCdrLookup lookup = lookup(server);
+            Optional<ResolvedIngestedCdrDto> resolved = lookup.resolve("DE", "ABC", "cdr-lab");
+            assertTrue(resolved.isEmpty());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void resolveWithTenantFallsBackToMatchingRawForSameParty() throws Exception {
+        String rawBody =
+            """
+            [
+              {
+                "id": "raw-1",
+                "receivedAt": "2026-02-18T09:00:00Z",
+                "cdr": {
+                  "country_code": "DE",
+                  "party_id": "ABC",
+                  "id": "cdr-lab",
+                  "total_energy": 8.5
+                }
+              }
+            ]
+            """;
+        HttpServer server = startServer(rawBody);
+        try {
+            IngestedCdrLookup lookup = lookup(server);
+            ResolvedIngestedCdrDto resolved = lookup.resolve("DE", "ABC", "cdr-lab").orElseThrow();
+            assertEquals("raw-1", resolved.serviceId());
+            assertEquals(8.5, resolved.cdr().get("total_energy"));
+        } finally {
+            server.stop(0);
+        }
+    }
+
     private static HttpServer startServer(String rawBody) throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/api/v1/raw-cdr", exchange -> writeJson(exchange, rawBody));

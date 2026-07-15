@@ -16,22 +16,22 @@
 
 package edx.connector.co2provider;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 
 public final class CdrCo2Enricher {
 
     public Map<String, Object> enrich(Map<String, Object> sourceCdr, Co2EmissionDataResponseDto emissions, String zone) {
         Map<String, Object> cdr = deepCopyMap(sourceCdr);
         Map<String, Double> intensityByHour = indexHourlyIntensity(emissions);
-        String unit = emissions.measurements().isEmpty() ? null : emissions.measurements().get(0).unit();
+        String unit = emissions == null || emissions.measurements() == null || emissions.measurements().isEmpty()
+            ? null
+            : emissions.measurements().get(0).unit();
 
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> periods = (List<Map<String, Object>>) cdr.get("charging_periods");
@@ -235,7 +235,10 @@ public final class CdrCo2Enricher {
         if (timestamp == null) {
             return null;
         }
-        return timestamp.endsWith("Z") ? timestamp : timestamp;
+        if (timestamp.endsWith("Z") || timestamp.matches(".*[+-]\\d{2}:\\d{2}$")) {
+            return timestamp;
+        }
+        return timestamp + "Z";
     }
 
     private static String stringValue(Object value) {
