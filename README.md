@@ -30,23 +30,27 @@ cd ../../ocn-node-v2 && ./gradlew bootRun
 
 The node loads JARs from `-Dloader.path=…` (default `/app/plugins` in Docker).
 
-### Cluster (PVC + GitHub Action)
+### Cluster (OTC OBS bucket)
 
-The OCN node mounts a PVC at `/app/plugins`. This repo ships a workflow that builds the JAR, copies it into that mount via the running node pod, and restarts the deployment so plugins reload.
+Upload the JAR to the node's OTC OBS bucket (S3-compatible), then restart the node so the entrypoint re-fetches plugins into `/app/plugins`.
 
-**Workflow:** [`.github/workflows/deploy-plugin-jar.yaml`](.github/workflows/deploy-plugin-jar.yaml)
-
-1. Ensure `ocn-node-v2` helm has `oli-app.persistence` mounting `/app/plugins` (see node `infra/helm/values*.yaml`).
-2. In this repo (or org), configure secrets:
-   - `VPN_CONFIG`, `VPN_PASS`, `KUBECONFIG` (same as node deploy)
-   - optional: `OLI_ARGO_SYNC_CLIENT_ID` / `OLI_ARGO_SYNC_PRIVATE_KEY` or `OCN_NODE_READ_TOKEN` to checkout private `ocn-node-v2` for compilation
-3. Optional GitHub Environment vars (`dev` / `int`):
-   - `OCN_NODE_NAMESPACE` (default `oli-banula`)
-   - `OCN_NODE_DEPLOYMENT` (default `ocn-node-v2-dev` / `ocn-node-v2`)
-   - `OCN_NODE_PLUGINS_PATH` (default `/app/plugins`)
-4. Run **Actions → Deploy EDX plugin JAR → Run workflow**, pick `dev` or `int`.
-
-Tag pushes (`v*`) build and deploy to `dev` by default.
+1. Build the JAR locally:
+   ```bash
+   ./gradlew jar
+   ```
+2. Upload to OBS as `<plugin-id>.jar` (the id listed in the node's `OCN_PLUGINS` env):
+   ```bash
+   aws s3 cp build/libs/ocn-node-edx-plugin*.jar \
+     "s3://ocn-node-plugins/ocn-node-edx-plugin.jar" \
+     --endpoint-url https://obs.eu-de.otc.t-systems.com
+   ```
+3. Ensure `ocn-node-v2` helm has:
+   - Shared in `values.yaml`: `OTC_BUCKET_NAME: ocn-node-plugins` and Secret `otc-obs-credentials` (`access_key_id`, `secret_access_key`) in each namespace
+   - Per env: `OCN_PLUGINS` (e.g. `ocn-node-edx-plugin` or `edx_v1,edx_v2`)
+4. Rollout-restart the node deployment so the entrypoint pulls the new JAR:
+   ```bash
+   kubectl -n <ns> rollout restart deployment/<ocn-node-v2-*>
+   ```
 
 After restart, check the node **PLUGINS** banner and:
 
